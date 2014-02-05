@@ -7,3 +7,6 @@ syntax: regexp
 ^inst/doc/.*\.md$
 syntax: regexp
 ^tmp/.*$
+
+syntax: regexp
+^man$

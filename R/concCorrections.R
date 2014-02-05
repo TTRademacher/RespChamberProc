@@ -1,4 +1,4 @@
-densityCorrFlux <- function(
+corrConcDensity <- function(
 	### Calculate density corrected concentration		
 	ds 					##<< data frame with each row one observations, and respective columns 
 	,volume=1			##<< volume of the chamber in m3
@@ -12,15 +12,15 @@ densityCorrFlux <- function(
 	ds[,colConc] * ds[,colTemp] * ds[,colPressure] * ds[,colPressure] * volume * R
 	### numeric vector (nrow ds):  corrected concentration [Amount of substance]
 } 
-attr(densityCorrFlux,"ex") <- function(){
+attr(corrConcDensity,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
-	ds$CO2_denC <- densityCorrFlux(ds)	
+	ds$CO2_denC <- corrConcDensity(ds)	
 }
 
 
-dilutionCorrFlux <- function(
-		### Calculate concentration corrected for dilution with water vapour		
+corrConcDilution <- function(
+		### Calculate concentration corrected for dilution with water vapor		
 		ds 					##<< data frame with each row one observations, and respective columns 
 		,colConc="CO2_Avg"	##<< column name of CO2 concentration [Amount of substance]
 		,colVapour="H20_Avg"	##<< column name of CO2 concentration [Amount of substance]
@@ -30,14 +30,14 @@ dilutionCorrFlux <- function(
 	ds[,colConc] * ds[,colVapour] 
 	### numeric vector (nrow ds):  corrected concentration [Amount of substance]
 } 
-attr(dilutionCorrFlux,"ex") <- function(){
+attr(corrConcDilution,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
-	ds$CO2_dilC <- dilutionCorrFlux(ds)	
+	ds$CO2_dilC <- corrConcDilution(ds)	
 }
 
 
-leakageCorrFlux <- function(
+corrConcLeakage <- function(
 	### Calculate concentration corrected for dilution with water vapour		
 	conc 				##<< numeric vecgor: concentration [Amount of substance]
 	,pLeakage=1			##<< numeric scalar: XX
@@ -47,9 +47,9 @@ leakageCorrFlux <- function(
 	colc * pLeakage
 	### numeric vector (length conc): corrected concentration [Amount of substance]
 } 
-attr(leakageCorrFlux,"ex") <- function(){
+attr(corrConcLeakage,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
-	ds$CO2_leakC <- leakageCorrFlux(ds)	
+	ds$CO2_leakC <- corrConcLeakage(ds)	
 }
 
