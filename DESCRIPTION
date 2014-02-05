@@ -1,10 +1,10 @@
-Package: myPackageId
-Title: one line title  
+Package: RespChamberProc
+Title: Processing data from respiration chambers  
 Version: 0.5.227
-Date: 2012-06-22
-Author: Thomas Wutzler
+Date: 2014-02-05
+Author: Thomas Wutzler, Oscar Pérez Priego
 Maintainer: Thomas Wutzler <twutz@bgc-jena.mpg.de>
-Description: longer description
+Description: Processing data from respiration chambers  
 Depends: R (>= 1.14.0)
 Suggests: testthat
 License: GPL-2
