@@ -14,16 +14,26 @@ calcOpenChamberFlux <- function(
   tLag <- times0[ dslRes$lagIndex ]
   dsl <- dslRes$ds
   times <- dsl[,colTime]
+  times0 <- times - times[1]
   conc <- dsl[,colConc]
   
-  #plot( conc ~ times )
-  linFlux <- regressFluxLinear( conc, times)[1]
-  if( abs(linFlux*diff(times[c(1,length(times))])) < 2*sd(conc) ){
-    warning("Flux magnitude smaller than noise, using linear flux estimte")
+  times30 <- head(times,30)	#first 30 seconds for linear estimate
+  conc30 <- head(conc,30)
+  #plot( conc ~ times0 )
+  resLinFlux <- regressFluxLinear( conc30, times30 )
+  linFlux <- resLinFlux[1]
+  sdResid <- sd(resid(attr(resLinFlux,"lm1")))
+  #abline( coefficients(attr(resLinFlux,"lm1")) )
+  if( abs(linFlux*diff(as.numeric(times30[c(1,length(times30))]))) < 1.5*sdResid ){
+    warning("Flux magnitude smaller than noise, using linear flux estimte of the first 30 seconds")
     fRegress <- regressFluxLinear
+	times <- times30
+	conc <- conc30
   }
     
-	fluxEst <- fRegress( conc ,  times)
+  	fluxEst <- fRegress( conc ,  times)
+	#lines( fitted(attr(fluxEst,"lm1")) ~  times0 , col="maroon")
+	#abline( coefficients(attr(fluxEst,"lm1"))[1], fluxEst[1], col="blue" )
   leverageEst <- sigmaBootLeverage(conc, times, fRegress=fRegress)
   ##details<<
   ## There are two kinds of uncertainty associated with the flux.
@@ -36,7 +46,7 @@ calcOpenChamberFlux <- function(
 		flux = fluxEst[1]			##<< the estimate of the CO2 flux [Amount per time]
 		,sdFlux = max(fluxEst[2],leverageEst)	##<< the standard deviation of the CO2 flux
 		,tLag = tLag		##<< lag-time between CO2 concentration in chamber and measurement at the sensor[XX]
-		,sdFluxRegression = fluxEst[2] ##<< the standard deviation of the flux by a single regression of CO2 flux
+		,sdFluxRegression = as.numeric(fluxEst[2]) ##<< the standard deviation of the flux by a single regression of CO2 flux
 		,sdFluxLeverage = leverageEst	##<< the standard deviation of the flux by leverage of starting or end values of the time series
 	)
 	
@@ -81,11 +91,13 @@ regressFluxSquare <- function(
 		,times	##<< times of conc measurements	[seconds]
 ){
   timesSec <- as.numeric(times) - as.numeric(times[1])
-  lm1 <- lm( conc ~ poly(timesSec,2) )
-  c(
+  lm1 <- lm( conc ~ poly(timesSec,2,raw = TRUE) )
+  res <- c(
     flux = as.vector(coefficients(lm1)[2])
     ,sdFlux = summary(lm1)$coefficients[2,2]
     )
+	attr(res,"lm1") <- lm1
+	res
 	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
 }
 attr(regressFluxSquare,"ex") <- function(){
@@ -105,10 +117,12 @@ regressFluxLinear <- function(
 ){
   timesSec <- as.numeric(times) - as.numeric(times[1])
   lm1 <- lm( conc ~ timesSec )
-  c(
+  res <- c(
     flux = as.vector(coefficients(lm1)[2])
     ,sdFlux = summary(lm1)$coefficients[2,2]
   )
+  attr(res,"lm1") <- lm1
+  res
   ### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
 }
 attr(regressFluxLinear,"ex") <- function(){
@@ -129,7 +143,7 @@ sigmaBootLeverage <- function(
 ){
 	##description<< 
 	## 
-  periodLength <- diff( times[c(1,length(times))] )
+  periodLength <- diff( as.numeric(times[c(1,length(times))]) )
   if( periodLength < 60 ) warning(paste("Time series of only",periodLength," seconds is too short. Recommended are at least 60 seconds"))
   start <- seq (0, 10)   # indices of starting the time series
   close <- seq(max(15, length(conc)-40), length(conc), 1) # indices of the end (deployment) of the duration
