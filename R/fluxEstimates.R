@@ -4,17 +4,17 @@ calcOpenChamberFlux <- function(
 	ds						##<< data.frame with concentration and time column of a chamber measurement of one replicate
 	,colConc="CO2_dry"		##<< column name of CO2 concentration [Amount of substance]
 	,colTime="TIMESTAMP"	##<< column name of time
-	,fRegress = regressFluxSquare	##<< function to yield a single flux estimate   
+	,fRegress = regressFluxExp	##<< function to yield a single flux estimate   
 ){
 	##details<< 
 	## details
   
   dslRes <- selectDataAfterLag(ds, colConc=colConc, colTime=colTime)
-  times0 <- ds[,colTime]
-  tLag <- times0[ dslRes$lagIndex ]
   dsl <- dslRes$ds
+  timesOrig <- ds[,colTime]
   times <- dsl[,colTime]
-  times0 <- times - times[1]
+  times0 <- as.numeric(times) - as.numeric(times[1])
+  tLag <- as.numeric(timesOrig[ dslRes$lagIndex ]) - as.numeric(timesOrig[1])
   conc <- dsl[,colConc]
   
   times30 <- head(times,30)	#first 30 seconds for linear estimate
@@ -22,8 +22,8 @@ calcOpenChamberFlux <- function(
   #plot( conc ~ times0 )
   resLinFlux <- regressFluxLinear( conc30, times30 )
   linFlux <- resLinFlux[1]
-  sdResid <- sd(resid(attr(resLinFlux,"lm1")))
-  #abline( coefficients(attr(resLinFlux,"lm1")) )
+  sdResid <- sd(resid(attr(resLinFlux,"model")))
+  #abline( coefficients(attr(resLinFlux,"model")) )
   if( abs(linFlux*diff(as.numeric(times30[c(1,length(times30))]))) < 1.5*sdResid ){
     warning("Flux magnitude smaller than noise, using linear flux estimte of the first 30 seconds")
     fRegress <- regressFluxLinear
@@ -32,8 +32,8 @@ calcOpenChamberFlux <- function(
   }
     
   	fluxEst <- fRegress( conc ,  times)
-	#lines( fitted(attr(fluxEst,"lm1")) ~  times0 , col="maroon")
-	#abline( coefficients(attr(fluxEst,"lm1"))[1], fluxEst[1], col="blue" )
+	#lines( fitted(attr(fluxEst,"model")) ~  times0 , col="maroon")
+	#abline( coefficients(attr(fluxEst,"model"))[1], fluxEst[1], col="blue" )
   leverageEst <- sigmaBootLeverage(conc, times, fRegress=fRegress)
   ##details<<
   ## There are two kinds of uncertainty associated with the flux.
@@ -42,20 +42,33 @@ calcOpenChamberFlux <- function(
   ## return value sdFlux is the maximum of those two components
   
 	##value<< numceric vector with entries
-	c(
-		flux = fluxEst[1]			##<< the estimate of the CO2 flux [Amount per time]
+	res <- c(
+		flux = as.numeric(fluxEst[1])			##<< the estimate of the CO2 flux [Amount per time]
 		,sdFlux = max(fluxEst[2],leverageEst)	##<< the standard deviation of the CO2 flux
-		,tLag = tLag		##<< lag-time between CO2 concentration in chamber and measurement at the sensor[XX]
+		,tLag = tLag		##<< time of lag phase in seconds
 		,sdFluxRegression = as.numeric(fluxEst[2]) ##<< the standard deviation of the flux by a single regression of CO2 flux
 		,sdFluxLeverage = leverageEst	##<< the standard deviation of the flux by leverage of starting or end values of the time series
 	)
-	
+	attr(res,"model") <- attr(fluxEst, "model")
+	res
 }
 attr(calcOpenChamberFlux,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
 	conc <- ds$CO2_dry <- corrConcDilution(ds)  
-  calcOpenChamberFlux(ds)
+    res1 <- calcOpenChamberFlux(ds)
+	res2 <- calcOpenChamberFlux(ds, fRegress=regressFluxSquare)
+	res3 <- calcOpenChamberFlux(ds, fRegress=regressFluxLinear)
+	
+	times <- ds$TIMESTAMP
+	times0 <- as.numeric(times) - as.numeric(times[1])
+	times0Fit <- times0[times0>res1["tLag"] ]
+	#length(times0Fit)
+	plot( conc ~ times0)
+	abline(v=res1["tLag"])
+	lines( fitted(attributes(res1)$model) ~ times0Fit , col="blue" )
+	lines( fitted(attributes(res2)$model) ~ times0Fit , col="red" )
+	lines( fitted(attributes(res3)$model) ~ times0Fit , col="green" )
 	
 }
 
@@ -96,7 +109,7 @@ regressFluxSquare <- function(
     flux = as.vector(coefficients(lm1)[2])
     ,sdFlux = summary(lm1)$coefficients[2,2]
     )
-	attr(res,"lm1") <- lm1
+	attr(res,"model") <- lm1
 	res
 	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
 }
@@ -110,6 +123,96 @@ attr(regressFluxSquare,"ex") <- function(){
   #lines( fitted(lm1) ~ times )
 }
 
+regressFluxExp <- function(
+		### Estimate the initial flux by fitting an exponentially saturating function
+		conc	  ##<< numeric vector of CO2 concentrations []
+		,times	##<< times of conc measurements	[seconds]
+){
+	timesSec <- as.numeric(times) - as.numeric(times[1])
+	#plot( conc ~ timesSec )
+	c0 <- quantile( tail(conc, max(10,length(conc)%/%5) ), probs=0.25)
+	#abline(h=c0)
+	cDiff <- conc-c0; cDiff[cDiff <= 0] <- NA
+	lm1 <- suppressWarnings( lm( log(cDiff) ~ timesSec ) )
+	#plot( log(conc-c0) ~ timesSec )
+	a0 <- exp(coefficients(lm1)[1])
+	b0 <- -coefficients(lm1)[2]
+	r0 <- a0/-b0
+	nlm1 <- try(nls( conc ~ r/-b * exp(-b*timesSec) + c
+		,start = list(r = r, b =b, c=c0)
+		,control=nls.control(tol = 1e-03, maxiter=200, minFactor=1/1024/4)
+	), silent=TRUE)
+	if( inherits(nlm1,"try-error") ){
+		nlm1 <- nls( conc ~ r/-b * exp(-b*timesSec) + c0
+						,start = list(r = r, b =b)
+						,control=nls.control(tol = 1e-03, maxiter=200, minFactor=1/1024/4)
+				)
+	}
+	#lines( I(a0*exp(-b0*timesSec) + c0) ~ timesSec, col="maroon"  ) 
+	#lines( fitted(nlm1) ~ timesSec, col="blue"  ) 
+	#plot(resid(nlm1) ~ timesSec )
+	#qqnorm( resid(nlm1) ); abline(0,1)
+	res <- c(
+			flux = coefficients(nlm1)[1]
+			,sdFlux = sqrt(vcov(nlm1)[1,1])
+	)
+	attr(res,"model") <- nlm1
+	res
+	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
+}
+attr(regressFluxExp,"ex") <- function(){
+	data(chamberLoggerEx1s)
+	ds <- chamberLoggerEx1s
+	conc <- ds$CO2_dry <- corrConcDilution(ds)  
+	times <- ds$TIMESTAMP
+	regressFluxExp( conc, times  )
+	plot( conc ~ times)
+	#lines( fitted(lm1) ~ times )
+}
+
+
+regressFluxMenten <- function(
+		### Estimate the initial flux by fitting a Michaelis-Menten type saturating function
+		conc	  ##<< numeric vector of CO2 concentrations []
+		,times	##<< times of conc measurements	[seconds]
+){
+	timesSec <- as.numeric(times) - as.numeric(times[1])
+	#plot( conc ~ timesSec )
+	c0 <- quantile( tail(conc, max(10,length(conc)%/%5) ), probs=0.4)
+	#abline(h=c0)
+	plot( conc-c0 ~ timesSec )
+	lm1 <- lm(head(conc,30)-c0 ~ head(timesSec,30) )
+	# initial slope in Michaelis menten is f=-r/m, substitute r = -m*f
+	# r is the range to cover (intercept from the linear model)
+	f0 <- coefficients(lm1)[2]
+	m0 <- -coefficients(lm1)[1] / f0
+	nlm1 <- nls( conc ~ c + -m*f * (1- timesSec/(m+timesSec)) 
+			,start = list(f=f0, m = m0, c = c0)
+	)
+	#lines( I(c0 + -m0*f0*(1-timesSec/(m0+timesSec))) ~ timesSec, col="maroon"  ) 
+	#lines( fitted(nlm1) ~ timesSec, col="blue"  ) 
+	#plot(resid(nlm1) ~ timesSec )
+	#qqnorm( resid(nlm1) ); abline(0,1)
+	res <- c(
+			flux = coefficients(nlm1)[1]
+			,sdFlux = sqrt(vcov(nlm1)[1,1])
+	)
+	attr(res,"model") <- nlm1
+	res
+	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
+}
+attr(regressFluxMenten,"ex") <- function(){
+	data(chamberLoggerEx1s)
+	ds <- chamberLoggerEx1s
+	conc <- ds$CO2_dry <- corrConcDilution(ds)  
+	times <- ds$TIMESTAMP
+	regressFluxMenten( conc, times  )
+	plot( conc ~ times)
+	#lines( fitted(lm1) ~ times )
+}
+
+
+
 regressFluxLinear <- function(
   ### Estimate the initial flux by polynomial regression
   conc	  ##<< numeric vector of CO2 concentrations []
@@ -121,7 +224,7 @@ regressFluxLinear <- function(
     flux = as.vector(coefficients(lm1)[2])
     ,sdFlux = summary(lm1)$coefficients[2,2]
   )
-  attr(res,"lm1") <- lm1
+  attr(res,"model") <- lm1
   res
   ### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
 }
