@@ -4,7 +4,7 @@ calcOpenChamberFlux <- function(
 	ds						##<< data.frame with concentration and time column of a chamber measurement of one replicate
 	,colConc="CO2_dry"		##<< column name of CO2 concentration [Amount of substance]
 	,colTime="TIMESTAMP"	##<< column name of time
-	,fRegress = regressFluxExp	##<< function to yield a single flux estimate   
+	,fRegress = regressFluxTanh	##<< function to yield a single flux estimate   
 ){
 	##details<< 
 	## details
@@ -56,9 +56,10 @@ attr(calcOpenChamberFlux,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
 	conc <- ds$CO2_dry <- corrConcDilution(ds)  
-    res1 <- calcOpenChamberFlux(ds)
+    res1 <- calcOpenChamberFlux(ds, fRegress=regressFluxLinear)
 	res2 <- calcOpenChamberFlux(ds, fRegress=regressFluxSquare)
-	res3 <- calcOpenChamberFlux(ds, fRegress=regressFluxLinear)
+	res3 <- calcOpenChamberFlux(ds, fRegress=regressFluxExp )
+	res4 <- calcOpenChamberFlux(ds, fRegress=regressFluxTanh )
 	
 	times <- ds$TIMESTAMP
 	times0 <- as.numeric(times) - as.numeric(times[1])
@@ -66,9 +67,10 @@ attr(calcOpenChamberFlux,"ex") <- function(){
 	#length(times0Fit)
 	plot( conc ~ times0)
 	abline(v=res1["tLag"])
-	lines( fitted(attributes(res1)$model) ~ times0Fit , col="blue" )
-	lines( fitted(attributes(res2)$model) ~ times0Fit , col="red" )
-	lines( fitted(attributes(res3)$model) ~ times0Fit , col="green" )
+	lines( fitted(attributes(res1)$model) ~ times0Fit , col="grey" )
+	lines( fitted(attributes(res2)$model) ~ times0Fit , col="blue" )
+	lines( fitted(attributes(res3)$model) ~ times0Fit , col="purple" )
+	lines( fitted(attributes(res4)$model) ~ times0Fit , col="red" )
 	
 }
 
@@ -210,6 +212,64 @@ attr(regressFluxMenten,"ex") <- function(){
 	plot( conc ~ times)
 	#lines( fitted(lm1) ~ times )
 }
+
+regressFluxTanh <- function(
+		### Estimate the initial flux by fitting a Michaelis-Menten type saturating function
+		conc	  ##<< numeric vector of CO2 concentrations []
+		,times	##<< times of conc measurements	[seconds]
+){
+	timesSec <- as.numeric(times) - as.numeric(times[1])
+	#plot( conc ~ timesSec )
+	cSat0 <- quantile( tail(conc, max(10,length(conc)%/%5) ), probs=0.4)
+	#abline(h=c0)
+	#plot( conc-c0 ~ timesSec )
+	lm1 <- lm(head(conc,30)-c00 ~ head(timesSec,30) )
+	# initial slope in Michaelis menten is f=-r/m, substitute r = -m*f
+	# r is the range to cover (intercept from the linear model)
+	s0 <- coefficients(lm1)[2]
+	c00 <- coefficients(lm1)[1]
+	#plot( (c00 - (conc - cSat0))/c00  ~ timesSec )
+	#lines( tanh(timesSec*-f0) ~ timesSec)
+	#nlm0 <- nls( conc ~  cSat + c0*(1-tanh(timesSec*(-s)))
+	#		,start = list(s=s0, cSat = cSat0, c0 = c00)
+	#)
+	#cf0 <- coefficients(nlm0)
+	# f = s*c0; subsitute s = f/c0
+	nlm1 <- try(nls( conc ~  cSat + c0*(1-tanh(timesSec*(-f/c0)))
+			,start = list(f=s0*c00, cSat = cSat0, c0 = c00)
+	), silent=TRUE)
+	if( inherits(nlm1,"try-error") ){
+		# fix cSat
+		nlm1 <- nls( conc ~  cSat0 + c0*(1-tanh(timesSec*(-f/c0)))
+				,start = list(f=s0*c00, c0 = c00)
+		)
+	}
+	
+	#lines( I(cSat0 + c00*(1-tanh(timesSec*(-f0)))) ~ timesSec, col="maroon"  ) 
+	#lines( fitted(nlm1) ~ timesSec, col="purple"  )
+	#plot(resid(nlm1) ~ timesSec )
+	#qqnorm( resid(nlm1) ); abline(0,1)
+	res <- c(
+			flux = coefficients(nlm1)[1]
+			,sdFlux = sqrt(vcov(nlm1)[1,1])
+	)
+	attr(res,"model") <- nlm1
+	res
+	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
+}
+attr(regressFluxTanh,"ex") <- function(){
+	data(chamberLoggerEx1s)
+	ds <- chamberLoggerEx1s[-(1:16),]
+	conc <- ds$CO2_dry <- corrConcDilution(ds)  
+	times <- ds$TIMESTAMP
+	times0 <- as.numeric(times) - as.numeric(times[1])
+	regressFluxTanh( conc, times  )
+	plot( conc ~ times0)
+	#lines( fitted(lm1) ~ times )
+	
+	
+}
+
 
 
 
