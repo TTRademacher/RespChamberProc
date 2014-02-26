@@ -23,23 +23,24 @@ attr(corrConcDilution,"ex") <- function(){
 
 
 corrFluxDensity <- function(
-	### Calculate density corrected concentration		
-	ds 					##<< data frame with each row one observations, and respective columns 
-	,volume=1			##<< volume of the chamber in m3
-	,colConc="CO2_Dry"##<< column name of CO2 concentration per dry air [Amount of substance]
-	,colTemp="TA_Avg"	##<< column name of air temperature inside chamber [°C]  
-	,colPressure="Pa"	##<< column name of pressure inside chamber [kPa]
+	### Calculate total flux inside the chamber from flux per amount of air
+  CO2_molarFlux 					  ##<< numeric vector of rate of changes in CO2 dry molar fraction [ppm/sec]
+	,volume=1			##<< numeric scalar: volume of the chamber in [m3]
+	,temp=20	     ##<< numeric vector: temperature inside chamber [°C]  
+	,pressure=101325 	##<< numeric vector: pressure inside chamber [Pa]
 ){
 	##details<< 
-	## XX
-	R <- 8.3144621	# universal gas constant in [J/K/mol]
-	ds[,colConc] * ds[,colTemp] * ds[,colPressure] * ds[,colPressure] * volume * R
-	### numeric vector (nrow ds):  corrected concentration [Amount of substance]
+	## The amount of air is determined by the volumen, pressure and temperature (universal gas law)
+	R <- 8.3144621	# universal gas constant in [J/K/mol]  (J=Pa * m3)  
+	CO2_molarFlux * pressure * volume  / (temp+273.15) / R 
+	### numeric vector (nrow ds):  CO2 flux [mumol CO2 /s]
 } 
 attr(corrFluxDensity,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
-	ds$CO2_denC <- corrConcDensity(ds)	
+  CO2_molarFlux <- ds$CO2_Avg   # just to have a column, the flux should be calculated properly before
+	ds$CO2_flux <- corrFluxDensity(CO2_molarFlux, pressure=101*1000) #kPa converted to Pa	
+  plot(ds$CO2_flux)
 }
 
 

@@ -1,14 +1,19 @@
 
-calcOpenChamberFlux <- function(
-	### Calculate CO2 flux and its uncertainties for an open top chamber.
+calcClosedChamberFlux <- function(
+	### Calculate CO2 flux and its uncertainties for a non steady-state canopy chamber.
 	ds						##<< data.frame with concentration and time column of a chamber measurement of one replicate
-	,colConc="CO2_dry"		##<< column name of CO2 concentration [Amount of substance]
-	,colTime="TIMESTAMP"	##<< column name of time
-	,fRegress = regressFluxTanh	##<< function to yield a single flux estimate   
+	,colConc="CO2_dry"		##<< column name of CO2 concentration [ppm]
+	,colTime="TIMESTAMP"	##<< column name of time [s]
+	,colTemp="TA_Avg"     ##<< column name of air temperature inside chamber [°C]
+  ,colPressure="Pa"     ##<< column name of air pressure inside chamber [Pa]
+	,fRegress = regressFluxTanh	##<< function to yield a single flux estimate, see details  
+  ,volume=1            ##<< volume inside the chamber im [m3]
 ){
 	##details<< 
-	## details
-  
+	## The function \code{fRegress} must conform to \code{\link{regressFluxTanh}}, i.e.
+  ## return a vector of length 2: the flux estimate and its standard deviation.
+  ## Optionally, it may return the model fit object in attribute "model"
+
   dslRes <- selectDataAfterLag(ds, colConc=colConc, colTime=colTime)
   dsl <- dslRes$ds
   timesOrig <- ds[,colTime]
@@ -41,25 +46,35 @@ calcOpenChamberFlux <- function(
   ## The second comes from the leverage of starting and end points of the regression (estimated by a bootstrap)
   ## return value sdFlux is the maximum of those two components
   
+  #correct fluxes for density and express per chamber instead of per mol air
+  fluxEstTotal = corrFluxDensity(fluxEst, volume = volume
+                  , temp = ds[ dslRes$lagIndex,colTemp ]
+                  , pressure = ds[ dslRes$lagIndex,colPressure ])
+  leverageEstTotal = corrFluxDensity(leverageEst, volume = volume
+                                     , temp = ds[ dslRes$lagIndex,colTemp ]
+                                     , pressure = ds[ dslRes$lagIndex,colPressure ])
+  
+  #corrFluxDensity( dsl, vol=2)
 	##value<< numceric vector with entries
 	res <- c(
-		flux = as.numeric(fluxEst[1])			##<< the estimate of the CO2 flux [Amount per time]
-		,sdFlux = max(fluxEst[2],leverageEst)	##<< the standard deviation of the CO2 flux
-		,tLag = tLag		##<< time of lag phase in seconds
-		,sdFluxRegression = as.numeric(fluxEst[2]) ##<< the standard deviation of the flux by a single regression of CO2 flux
-		,sdFluxLeverage = leverageEst	##<< the standard deviation of the flux by leverage of starting or end values of the time series
+		flux = as.numeric(fluxEstTotal[1])			        ##<< the estimate of the CO2 flux [mumol / s]
+		,sdFlux = max(fluxEstTotal[2],leverageEstTotal)	##<< the standard deviation of the CO2 flux
+		,tLag = tLag		                                ##<< time of lag phase in seconds
+		,sdFluxRegression = as.numeric(fluxEstTotal[2]) ##<< the standard deviation of the flux by a single regression of CO2 flux
+		,sdFluxLeverage = leverageEstTotal	            ##<< the standard deviation of the flux by leverage of starting or end values of the time series
 	)
 	attr(res,"model") <- attr(fluxEst, "model")
 	res
 }
-attr(calcOpenChamberFlux,"ex") <- function(){
+attr(calcClosedChamberFlux,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
+  ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
 	conc <- ds$CO2_dry <- corrConcDilution(ds)  
-    res1 <- calcOpenChamberFlux(ds, fRegress=regressFluxLinear)
-	res2 <- calcOpenChamberFlux(ds, fRegress=regressFluxSquare)
-	res3 <- calcOpenChamberFlux(ds, fRegress=regressFluxExp )
-	res4 <- calcOpenChamberFlux(ds, fRegress=regressFluxTanh )
+    res1 <- calcClosedChamberFlux(ds, fRegress=regressFluxLinear)
+	res2 <- calcClosedChamberFlux(ds, fRegress=regressFluxSquare)
+	res3 <- calcClosedChamberFlux(ds, fRegress=regressFluxExp )
+	res4 <- calcClosedChamberFlux(ds, fRegress=regressFluxTanh )
 	
 	times <- ds$TIMESTAMP
 	times0 <- as.numeric(times) - as.numeric(times[1])
@@ -71,6 +86,8 @@ attr(calcOpenChamberFlux,"ex") <- function(){
 	lines( fitted(attributes(res2)$model) ~ times0Fit , col="blue" )
 	lines( fitted(attributes(res3)$model) ~ times0Fit , col="purple" )
 	lines( fitted(attributes(res4)$model) ~ times0Fit , col="red" )
+  
+  res <- rbind(res1, res2, res3, res4)
 	
 }
 
@@ -146,7 +163,7 @@ regressFluxExp <- function(
 	), silent=TRUE)
 	if( inherits(nlm1,"try-error") ){
 		nlm1 <- nls( conc ~ r/-b * exp(-b*timesSec) + c0
-						,start = list(r = r, b =b)
+						,start = list(r = r0, b =b0)
 						,control=nls.control(tol = 1e-03, maxiter=200, minFactor=1/1024/4)
 				)
 	}
@@ -223,7 +240,7 @@ regressFluxTanh <- function(
 	cSat0 <- quantile( tail(conc, max(10,length(conc)%/%5) ), probs=0.4)
 	#abline(h=c0)
 	#plot( conc-c0 ~ timesSec )
-	lm1 <- lm(head(conc,30)-c00 ~ head(timesSec,30) )
+	lm1 <- lm(head(conc,30)-cSat0 ~ head(timesSec,30) )
 	# initial slope in Michaelis menten is f=-r/m, substitute r = -m*f
 	# r is the range to cover (intercept from the linear model)
 	s0 <- coefficients(lm1)[2]
