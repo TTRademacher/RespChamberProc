@@ -9,8 +9,10 @@ calcClosedChamberFlux <- function(
 	,fRegress = regressFluxTanh	##<< function to yield a single flux estimate, see details  
   ,volume=1            ##<< volume inside the chamber im [m3]
 ){
-	##details<< 
-	## The function \code{fRegress} must conform to \code{\link{regressFluxTanh}}, i.e.
+	##seealso<< \code{\link{RespChamberProc}}
+	
+  ##details<< 
+  ## The function \code{fRegress} must conform to \code{\link{regressFluxSquare}}, i.e.
   ## return a vector of length 2: the flux estimate and its standard deviation.
   ## Optionally, it may return the model fit object in attribute "model"
 
@@ -100,6 +102,8 @@ selectDataAfterLag <- function(
   ,colTime="TIMESTAMP"  	##<< column name of time column [s]
   
 ){
+	##seealso<< \code{\link{RespChamberProc}}
+	
   # TODO: account for different times
   iBreak <- min(cpt.mean(ds[,colConc],penalty="SIC",method="PELT",class=FALSE)) 
   ##value<< A list with entries
@@ -118,10 +122,32 @@ attr(selectDataAfterLag,"ex") <- function(){
 }
 
 regressFluxSquare <- function(
-		### Estimate the initial flux by polynomial regression
-		conc	  ##<< numeric vector of CO2 concentrations []
+		### Estimate the initial flux and its standard deviation by polynomial regression
+		conc	  ##<< numeric vector of CO2 concentrations [ppm]
 		,times	##<< times of conc measurements	[seconds]
 ){
+  ##seealso<< \code{\link{RespChamberProc}}
+  
+  ##details<< 
+  ## The flux is calculated at the slop of the concnetration change. By
+  ## changing the concentration gradient, however, the flux is disturbed. In effect the 
+  ## flux will decline over time and concentrations go towards a saturation.
+  ##
+  ## This method fits a polynomial regression to the concentrations and infers the slope at reports
+  ## the slope at the initial time.
+  ##
+  ## Other functional forms can be fitted to estimate the initial slope:
+  ## \itemize{
+  ##  \item{ Linear: \code{\link{regressFluxLinear}}  }
+  ##  \item{ Hyperbolic tangent saturating function: \code{\link{regressFluxTanh}}  }
+  ##  \item{ Exponential: \code{\link{regressFluxExp}}  }
+  ##  \item{ Michaelis-Menten type saturating function: \code{\link{regressFluxMenten}}  }
+  ## }
+  ##
+  ## The hyperbolic tangent form (\code{\link{regressFluxTanh}}) has the advantage that 
+  ## initially the flux is changing only very slowly. In contrast, whith the exponential form the
+  ## slope changes much at the beginning.
+		  
   timesSec <- as.numeric(times) - as.numeric(times[1])
   lm1 <- lm( conc ~ poly(timesSec,2,raw = TRUE) )
   res <- c(
@@ -147,6 +173,9 @@ regressFluxExp <- function(
 		conc	  ##<< numeric vector of CO2 concentrations []
 		,times	##<< times of conc measurements	[seconds]
 ){
+	##seealso<< \code{\link{regressFluxSquare}}
+	##seealso<< \code{\link{RespChamberProc}}
+	
 	timesSec <- as.numeric(times) - as.numeric(times[1])
 	#plot( conc ~ timesSec )
 	c0 <- quantile( tail(conc, max(10,length(conc)%/%5) ), probs=0.25)
@@ -195,6 +224,9 @@ regressFluxMenten <- function(
 		conc	  ##<< numeric vector of CO2 concentrations []
 		,times	##<< times of conc measurements	[seconds]
 ){
+	##seealso<< \code{\link{regressFluxSquare}}
+	##seealso<< \code{\link{RespChamberProc}}
+	
 	timesSec <- as.numeric(times) - as.numeric(times[1])
 	#plot( conc ~ timesSec )
 	c0 <- quantile( tail(conc, max(10,length(conc)%/%5) ), probs=0.4)
@@ -235,6 +267,9 @@ regressFluxTanh <- function(
 		conc	  ##<< numeric vector of CO2 concentrations []
 		,times	##<< times of conc measurements	[seconds]
 ){
+	##seealso<< \code{\link{regressFluxSquare}}
+	##seealso<< \code{\link{RespChamberProc}}
+	
 	timesSec <- as.numeric(times) - as.numeric(times[1])
 	#plot( conc ~ timesSec )
 	cSat0 <- quantile( tail(conc, max(10,length(conc)%/%5) ), probs=0.4)
@@ -295,6 +330,9 @@ regressFluxLinear <- function(
   conc	  ##<< numeric vector of CO2 concentrations []
   ,times	##<< times of conc measurements	[seconds]
 ){
+	##seealso<< \code{\link{regressFluxSquare}}
+	##seealso<< \code{\link{RespChamberProc}}
+	
   timesSec <- as.numeric(times) - as.numeric(times[1])
   lm1 <- lm( conc ~ timesSec )
   res <- c(
@@ -321,8 +359,8 @@ sigmaBootLeverage <- function(
 		,times	##<< times of conc measurements
 		,fRegress = regressFluxSquare	##<< function to yield a single flux estimate 
 ){
-	##description<< 
-	## 
+	##seealso<< \code{\link{RespChamberProc}}
+	
   periodLength <- diff( as.numeric(times[c(1,length(times))]) )
   if( periodLength < 60 ) warning(paste("Time series of only",periodLength," seconds is too short. Recommended are at least 60 seconds"))
   start <- seq (0, 10)   # indices of starting the time series
