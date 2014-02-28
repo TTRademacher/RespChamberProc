@@ -12,3 +12,6 @@ syntax: regexp
 ^man$
 syntax: glob
 .Rhistory
+
+syntax: regexp
+^inst/manip/Codes SMANIE\.xlsx$

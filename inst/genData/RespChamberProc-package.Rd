@@ -11,15 +11,15 @@ Main method is \code{\link{calcClosedChamberFlux}},
 to calculate flux and its uncertainty from a time series of measurements.
 
 
-A first set of functions correct measured CO2 concentrations
+A first set of functions correct measured CO2 concentrations and fluxes for environmental and chamber properties.
 \itemize{
-\item{ Changing air density with pressure and temperature: \code{\link{corrConcDensity}}  }
+\item{ Changing air density with pressure and temperature: \code{\link{corrFluxDensity}}  }
 \item{ Dilution with water vapor: \code{\link{corrConcDilution}}  }
 \item{ Leakage of the chamber: \code{\link{corrConcLeakage}}  }
 }%itemize
 
 
-A second set of functions estimates the flux and its uncertainty from the concentrations 
+A second set of functions estimates the flux and its uncertainty from the concentrations. 
 \itemize{
 \item{ Aggregating estimates: \code{\link{calcClosedChamberFlux}}  }
 \item{ Select the subset of data after lagTime: \code{\link{selectDataAfterLag}}  }
