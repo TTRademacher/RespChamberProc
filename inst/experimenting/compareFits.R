@@ -16,6 +16,9 @@ dsAll$TIMESTAMP <- ds$time
 ds <- subset(dsAll, series==17)		# saturating consumption
 ds <- subset(dsAll, series==15)		# saturating production
 
+res <- calcClosedChamberFlux(ds )
+
+
 
 dss <- subset(dsAll, series != 18)
 library(plyr)

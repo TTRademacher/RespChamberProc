@@ -6,8 +6,9 @@ calcClosedChamberFlux <- function(
 	,colTime="TIMESTAMP"	##<< column name of time [s]
 	,colTemp="TA_Avg"       ##<< column name of air temperature inside chamber [°C]
     ,colPressure="Pa"       ##<< column name of air pressure inside chamber [Pa]
-	,fRegress = regressFluxTanh	##<< function to yield a single flux estimate, see details  
-  ,volume=1            ##<< volume inside the chamber im [m3]
+	,fRegress = c(regressFluxLinear, regressFluxTanh)	##<< vector of functions to yield a single flux estimate, see details  
+  	,volume=1               ##<< volume inside the chamber im [m3]
+	,isEstimateLeverage	= TRUE	##<< set to FALSE to omit the time consuming bootstrap for uncertainty due to leverage
 ){
 	##seealso<< \code{\link{RespChamberProc}}
 	
@@ -15,6 +16,7 @@ calcClosedChamberFlux <- function(
   ## The function \code{fRegress} must conform to \code{\link{regressFluxSquare}}, i.e.
   ## return a vector of length 2: the flux estimate and its standard deviation.
   ## Optionally, it may return the model fit object in attribute "model"
+  ## If several functions are given, then the best fit is selected according to AIC criterion.
 
   dslRes <- selectDataAfterLag(ds, colConc=colConc, colTime=colTime)
   dsl <- dslRes$ds
@@ -25,11 +27,16 @@ calcClosedChamberFlux <- function(
   conc <- dsl[,colConc]
 
   # removed check for linear fit
-    
-  	fluxEst <- fRegress( conc ,  times)
+
+  fluxEstL <- lapply( fRegress, function(fReg){	
+  	fluxEst <- fReg( conc ,  times)
+  })
+  iBest <- which.min( do.call(rbind,fluxEstL)[,3] )
+  fReg <- fRegress[[iBest]]
+  fluxEst <- fluxEstL[[iBest]]
 	#lines( fitted(attr(fluxEst,"model")) ~  times0 , col="maroon")
 	#abline( coefficients(attr(fluxEst,"model"))[1], fluxEst[1], col="blue" )
-  leverageEst <- sigmaBootLeverage(conc, times, fRegress=fRegress)
+  leverageEst <- if( isTRUE(isEstimateLeverage) ) sigmaBootLeverage(conc, times, fRegress=fReg) else 0
   ##details<<
   ## There are two kinds of uncertainty associated with the flux.
   ## The first comes from the uncertainty of the slope of concentration increase.
@@ -81,7 +88,7 @@ attr(calcClosedChamberFlux,"ex") <- function(){
 		legend( "bottomright", inset=c(0.01,0.01), legend=c("Linear","Polynomial","Tanh"), col=c("grey","blue","red"), lty=1)
 	}else{
 		lines( -fitted(attributes(resTanh)$model) ~ times0Fit , col="red" )
-		legend( "topright", inset=c(0.01,0.01), legend=c("Linear","Polynomial","Exponential","Tanh"), col=c("grey","blue","purple","red"), lty=1)
+		legend( "topright", inset=c(0.01,0.01), legend=c("Linear","Polynomial","Tanh"), col=c("grey","blue","purple","red"), lty=1)
 	}
 	
      res <- rbind(resLin, resSquare, resTanh)
@@ -149,6 +156,7 @@ regressFluxSquare <- function(
   res <- c(
     flux = as.vector(coefficients(lm1)[2])
     ,sdFlux = summary(lm1)$coefficients[2,2]
+	, AIC = AIC(lm1)
     )
 	attr(res,"model") <- lm1
 	res
@@ -199,6 +207,7 @@ regressFluxExp <- function(
 	res <- c(
 			flux = coefficients(nlm1)[1]
 			,sdFlux = sqrt(vcov(nlm1)[1,1])
+			, AIC = AIC(nlm1)
 	)
 	attr(res,"model") <- nlm1
 	res
@@ -243,6 +252,7 @@ regressFluxMenten <- function(
 	res <- c(
 			flux = coefficients(nlm1)[1]
 			,sdFlux = sqrt(vcov(nlm1)[1,1])
+			, AIC = AIC(nlm1)
 	)
 	attr(res,"model") <- nlm1
 	res
@@ -308,6 +318,7 @@ regressFluxTanh <- function(
 	res <- c(
 			flux = ifelse(fluxLin < 0,-1,1) * coefficients(nlm1)[1]
 			,sdFlux = sqrt(vcov(nlm1)[1,1])
+			, AIC = AIC(nlm1)
 	)
 	attr(res,"model") <- nlm1
 	res
@@ -342,6 +353,7 @@ regressFluxLinear <- function(
   res <- c(
     flux = as.vector(coefficients(lm1)[2])
     ,sdFlux = summary(lm1)$coefficients[2,2]
+	,AIC=AIC(lm1)
   )
   attr(res,"model") <- lm1
   res
