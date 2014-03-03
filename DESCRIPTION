@@ -5,7 +5,7 @@ Date: 2014-02-05
 Author: Thomas Wutzler, Oscar Pérez Priego
 Maintainer: Thomas Wutzler <twutz@bgc-jena.mpg.de>
 Description: Processing data from respiration chambers  
-Depends: R (>= 1.14.0), changepoint, boot
+Depends: R (>= 1.14.0), changepoint, minpack.lm
 Suggests: testthat
 License: GPL-2
 LazyLoad: yes

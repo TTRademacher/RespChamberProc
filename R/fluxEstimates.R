@@ -4,8 +4,8 @@ calcClosedChamberFlux <- function(
 	ds						##<< data.frame with concentration and time column of a chamber measurement of one replicate
 	,colConc="CO2_dry"		##<< column name of CO2 concentration [ppm]
 	,colTime="TIMESTAMP"	##<< column name of time [s]
-	,colTemp="TA_Avg"     ##<< column name of air temperature inside chamber [°C]
-  ,colPressure="Pa"     ##<< column name of air pressure inside chamber [Pa]
+	,colTemp="TA_Avg"       ##<< column name of air temperature inside chamber [°C]
+    ,colPressure="Pa"       ##<< column name of air pressure inside chamber [Pa]
 	,fRegress = regressFluxTanh	##<< function to yield a single flux estimate, see details  
   ,volume=1            ##<< volume inside the chamber im [m3]
 ){
@@ -23,20 +23,8 @@ calcClosedChamberFlux <- function(
   times0 <- as.numeric(times) - as.numeric(times[1])
   tLag <- as.numeric(timesOrig[ dslRes$lagIndex ]) - as.numeric(timesOrig[1])
   conc <- dsl[,colConc]
-  
-  times30 <- head(times,30)	#first 30 seconds for linear estimate
-  conc30 <- head(conc,30)
-  #plot( conc ~ times0 )
-  resLinFlux <- regressFluxLinear( conc30, times30 )
-  linFlux <- resLinFlux[1]
-  sdResid <- sd(resid(attr(resLinFlux,"model")))
-  #abline( coefficients(attr(resLinFlux,"model")) )
-  if( abs(linFlux*diff(as.numeric(times30[c(1,length(times30))]))) < 1.5*sdResid ){
-    warning("Flux magnitude smaller than noise, using linear flux estimte of the first 30 seconds")
-    fRegress <- regressFluxLinear
-	times <- times30
-	conc <- conc30
-  }
+
+  # removed check for linear fit
     
   	fluxEst <- fRegress( conc ,  times)
 	#lines( fitted(attr(fluxEst,"model")) ~  times0 , col="maroon")
@@ -71,25 +59,33 @@ calcClosedChamberFlux <- function(
 attr(calcClosedChamberFlux,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
-  ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
-	conc <- ds$CO2_dry <- corrConcDilution(ds)  
-    res1 <- calcClosedChamberFlux(ds, fRegress=regressFluxLinear)
-	res2 <- calcClosedChamberFlux(ds, fRegress=regressFluxSquare)
-	res3 <- calcClosedChamberFlux(ds, fRegress=regressFluxExp )
-	res4 <- calcClosedChamberFlux(ds, fRegress=regressFluxTanh )
+    ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
+	conc <- ds$CO2_dry <- corrConcDilution(ds)
+	
+    resLin <- calcClosedChamberFlux(ds, fRegress=regressFluxLinear)
+	resSquare <- calcClosedChamberFlux(ds, fRegress=regressFluxSquare)
+	#resExp <- calcClosedChamberFlux(ds, fRegress=regressFluxExp )
+	resTanh <- calcClosedChamberFlux(ds, fRegress=regressFluxTanh )
 	
 	times <- ds$TIMESTAMP
 	times0 <- as.numeric(times) - as.numeric(times[1])
-	times0Fit <- times0[times0>res1["tLag"] ]
+	times0Fit <- times0[times0>resLin["tLag"] ]
 	#length(times0Fit)
-	plot( conc ~ times0)
-	abline(v=res1["tLag"])
-	lines( fitted(attributes(res1)$model) ~ times0Fit , col="grey" )
-	lines( fitted(attributes(res2)$model) ~ times0Fit , col="blue" )
-	lines( fitted(attributes(res3)$model) ~ times0Fit , col="purple" )
-	lines( fitted(attributes(res4)$model) ~ times0Fit , col="red" )
-  
-  res <- rbind(res1, res2, res3, res4)
+	plot( ds$CO2_dry ~ times0, xlab="time (s)", ylab="" ); mtext("CO2_dry (ppm)",2,2,las=0)
+	abline(v=resLin["tLag"], col="grey", lty="dotted")
+	lines( fitted(attributes(resLin)$model) ~ times0Fit , col="grey" )
+	lines( fitted(attributes(resSquare)$model) ~ times0Fit , col="blue" )
+	#lines( fitted(attributes(resExp)$model) ~ times0Fit , col="purple" )
+	if( resLin[1] > 0 ){
+		lines( fitted(attributes(resTanh)$model) ~ times0Fit , col="red" )
+		legend( "bottomright", inset=c(0.01,0.01), legend=c("Linear","Polynomial","Tanh"), col=c("grey","blue","red"), lty=1)
+	}else{
+		lines( -fitted(attributes(resTanh)$model) ~ times0Fit , col="red" )
+		legend( "topright", inset=c(0.01,0.01), legend=c("Linear","Polynomial","Exponential","Tanh"), col=c("grey","blue","purple","red"), lty=1)
+	}
+	
+     res <- rbind(resLin, resSquare, resTanh)
+	 res
 	
 }
 
@@ -265,44 +261,52 @@ attr(regressFluxMenten,"ex") <- function(){
 regressFluxTanh <- function(
 		### Estimate the initial flux by fitting a Michaelis-Menten type saturating function
 		conc	  ##<< numeric vector of CO2 concentrations []
-		,times	##<< times of conc measurements	[seconds]
+		,times	  ##<< times of conc measurements	[seconds]
+		,cSatFac=2  ##<< Position of the initial saturation (0 start, 1 end, >1 outside measured range) 
 ){
 	##seealso<< \code{\link{regressFluxSquare}}
 	##seealso<< \code{\link{RespChamberProc}}
 	
 	timesSec <- as.numeric(times) - as.numeric(times[1])
-	#plot( conc ~ timesSec )
-	cSat0 <- quantile( tail(conc, max(10,length(conc)%/%5) ), probs=0.4)
-	#abline(h=c0)
-	#plot( conc-c0 ~ timesSec )
+	fluxLin <- coefficients(lm(conc ~ timesSec ))[2]
+	if( fluxLin < 0 ) conc <- -conc			# invert, do not forget to invert again when flux calculated
+	# increasing concentraiton
+	# set the saturation twice above the range
+	cRange <- quantile( conc , probs=c(0.05,0.95))
+	cSat0 <- cRange[1] + cSatFac*diff(cRange)
+	#abline(h=cSat0)
+	#plot( conc-cSat0 ~ timesSec )
 	lm1 <- lm(head(conc,30)-cSat0 ~ head(timesSec,30) )
-	# initial slope in Michaelis menten is f=-r/m, substitute r = -m*f
-	# r is the range to cover (intercept from the linear model)
-	s0 <- coefficients(lm1)[2]
-	c00 <- coefficients(lm1)[1]
-	#plot( (c00 - (conc - cSat0))/c00  ~ timesSec )
-	#lines( tanh(timesSec*-f0) ~ timesSec)
-	#nlm0 <- nls( conc ~  cSat + c0*(1-tanh(timesSec*(-s)))
-	#		,start = list(s=s0, cSat = cSat0, c0 = c00)
-	#)
-	#cf0 <- coefficients(nlm0)
-	# f = s*c0; subsitute s = f/c0
-	nlm1 <- try(nls( conc ~  cSat + c0*(1-tanh(timesSec*(-f/c0)))
-			,start = list(f=s0*c00, cSat = cSat0, c0 = c00)
-	), silent=TRUE)
+	#abline(coefficients(lm1))
+	# c0 is the range to cover (= -intercept from the linear model)
+	s0 <- coefficients(lm1)[2]	     # initial slope
+	c00 <- -coefficients(lm1)[1]     # range to cover
+	#plot( ((conc - cSat0))/c00+1  ~ timesSec )		# that matches tanh def between 0 and 1
+	#lines( tanh(timesSec*s0/c00) ~ timesSec)	 	# tanh function  - set equal to above and solve for conc
+	#plot( conc ~ timesSec )
+	#lines( (tanh(timesSec*s0/c00)-1)*c00 + cSat0)  # initial in conc range
+	nlm1 <- try( 
+			# use nlsLM from minpack.lm to switch between Newten and Levenberg, avoid singular gradient in near-linear cases
+			# http://www.r-bloggers.com/a-better-nls/
+			nlm1 <- nlsLM( conc ~  (tanh(timesSec*s/c0)-1)*c0 + cSat
+			,start = list(s=s0, cSat = cSat0, c0 = c00)
+			)
+	,silent=TRUE)
 	if( inherits(nlm1,"try-error") ){
+		#warning("Not able to fit tanh, retrying with fixed cSat - check plausibility of results.")
 		# fix cSat
-		nlm1 <- nls( conc ~  cSat0 + c0*(1-tanh(timesSec*(-f/c0)))
-				,start = list(f=s0*c00, c0 = c00)
+		nlm1 <- nlsLM( conc ~  (tanh(timesSec*s/c0)-1)*c0 + cSat0
+				,start = list(s=s0, c0 = c00)
 		)
 	}
+	# lines(fitted(nlm1) ~ timesSec )
 	
-	#lines( I(cSat0 + c00*(1-tanh(timesSec*(-f0)))) ~ timesSec, col="maroon"  ) 
+	#lines( I(cSat0 + c00*(1-tanh(timesSec*(-s0)))) ~ timesSec, col="maroon"  ) 
 	#lines( fitted(nlm1) ~ timesSec, col="purple"  )
 	#plot(resid(nlm1) ~ timesSec )
 	#qqnorm( resid(nlm1) ); abline(0,1)
 	res <- c(
-			flux = coefficients(nlm1)[1]
+			flux = ifelse(fluxLin < 0,-1,1) * coefficients(nlm1)[1]
 			,sdFlux = sqrt(vcov(nlm1)[1,1])
 	)
 	attr(res,"model") <- nlm1
