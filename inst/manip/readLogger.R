@@ -66,7 +66,8 @@ p1 <- ggplot( dsChunksClean, aes(x=TIMESTAMP, y=CO2_dry) ) + geom_point() + face
 #-- calculate flux and extract environmental conditions, may be parallelized
 library(plyr)
 library(doSNOW)
-cl = makeCluster(2)
+nNode = 2	# number of processors
+cl = makeCluster(nNode)		
 registerDoSNOW(cl)
 clusterEvalQ(cl, library(RespChamberProc))		# functions need to be loaded on remote hosts
 
@@ -84,6 +85,8 @@ system.time(res <- ddply( 	dsChunksClean, .(iChunk), function(dsi){
 }
 , .parallel=TRUE
 ))
+
+#stopCluster(cl)
 
 
 
