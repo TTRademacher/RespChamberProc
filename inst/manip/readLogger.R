@@ -35,17 +35,17 @@ ds$Pa <- ds$AirPres * 100   # convert hPa to Pa
 	#?dlply
 }
 
-# disect the entire timeSeries into chunks that are separated by 
+#--  disect the entire timeSeries into chunks that are separated by 
 # a change in collar number or a time difference of more than 20 seconds
-timeSec <- as.numeric(ds$TIMESTAMP) - as.numeric( ds$TIMESTAMP[1] )
-timeDiff <- diff(timeSec)
-iCollarChanges <- which( diff(ds$Collar) != 0 )
+timeDiff <- diff(as.numeric(ds$TIMESTAMP))
 iGaps <-  which( timeDiff > 20)   # 20 seconds different measurement time series
+iCollarChanges <- which( diff(ds$Collar) != 0 )
 iChunks <- c( 1, sort(union(iCollarChanges, iGaps)), nrow(ds) ) 
 dsChunksL <- lapply( 2:length(iChunks), function(i){
 			cbind( iChunk=i-1, ds[(iChunks[i-1]+1):(iChunks[i]), ,drop=FALSE])
 		}) 
 
+#--  get of all the chunks with a zero in collar, less than 20 row, less than a minute or constant CO2
 #sapply( dsChunks, nrow )
 #sapply( dsChunks, function(dsi){ dsi$Collar[1] })
 #dsia <- dsChunks[[4]]	
@@ -63,9 +63,15 @@ dsChunksClean <- do.call( rbind, lapply(dsChunksL, function(dsia){
 library(ggplot2)
 p1 <- ggplot( dsChunksClean, aes(x=TIMESTAMP, y=CO2_dry) ) + geom_point() + facet_wrap( ~ iChunk, scales = "free")
 
-# calculate flux and extract environmental conditions
-dsi <- subset( dsChunksClean, iChunk=iChunk[1] )
-res <- ddply( 	dsChunksClean, .(iChunk), function(dsi){
+#-- calculate flux and extract environmental conditions, may be parallelized
+library(plyr)
+library(doSNOW)
+cl = makeCluster(2)
+registerDoSNOW(cl)
+clusterEvalQ(cl, library(RespChamberProc))		# functions need to be loaded on remote hosts
+
+#dsi <- subset( dsChunksClean, iChunk=iChunk[1] )
+system.time(res <- ddply( 	dsChunksClean, .(iChunk), function(dsi){
 			collar <- dsi$Collar[1] 
 			iChunk = dsi$iChunk[1]
 			print( paste(iChunk, dsi$TIMESTAMP[1]," Collar: ",collar) )
@@ -75,7 +81,9 @@ res <- ddply( 	dsChunksClean, .(iChunk), function(dsi){
 			dsiLag <- dsi[ res["lagIndex"], ,drop=FALSE]
 			cbind( data.frame( time=dsiLag[,"TIMESTAMP"], collar=collar, CO2_flux=res[1], CO2_flux_sd=res[2] )
 				, dsiLag[,c("Chamber","AirTemp","AirPres","PAR","BodyTemp","SurTemp","SoilTemp","SoilMoist")] )
-})
+}
+, .parallel=TRUE
+))
 
 
 
