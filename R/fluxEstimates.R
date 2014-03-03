@@ -18,6 +18,7 @@ calcClosedChamberFlux <- function(
   ## Optionally, it may return the model fit object in attribute "model"
   ## If several functions are given, then the best fit is selected according to AIC criterion.
 
+  #plot( ds[,colConc] ~ ds[,colTime] )
   dslRes <- selectDataAfterLag(ds, colConc=colConc, colTime=colTime)
   dsl <- dslRes$ds
   timesOrig <- ds[,colTime]
@@ -57,6 +58,7 @@ calcClosedChamberFlux <- function(
 		flux = as.numeric(fluxEstTotal[1])			        ##<< the estimate of the CO2 flux [mumol / s]
 		,sdFlux = max(fluxEstTotal[2],leverageEstTotal)	##<< the standard deviation of the CO2 flux
 		,tLag = tLag		                                ##<< time of lag phase in seconds
+		,lagIndex = dslRes$lagIndex 					##<< index of the row at the end of lag-time
 		,sdFluxRegression = as.numeric(fluxEstTotal[2]) ##<< the standard deviation of the flux by a single regression of CO2 flux
 		,sdFluxLeverage = leverageEstTotal	            ##<< the standard deviation of the flux by leverage of starting or end values of the time series
 	)
