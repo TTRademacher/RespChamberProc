@@ -35,7 +35,17 @@ resFluxesL <- dlply( dss, .(series), function(ds){
 		})
 resFluxesPoly <- do.call(rbind, resFluxesL)
 
-(resFluxesPoly - resFluxesTanh ) / resFluxesTanh 
+resFluxesL <- dlply( dss, .(series), function(ds){
+			resi <- calcClosedChamberFlux(ds)
+			c( series = ds$series[1], resi )
+		})
+resFluxesAIC <- do.call(rbind, resFluxesL)
+
+
+
+(resFluxesPoly - resFluxesTanh ) / resFluxesTanh
+(resFluxesPoly - resFluxesAIC ) / resFluxesAIC 
+
 
 
 ds <- subset(dss, series==2)		# differences between tanh and poly

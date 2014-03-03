@@ -6,7 +6,7 @@ calcClosedChamberFlux <- function(
 	,colTime="TIMESTAMP"	##<< column name of time [s]
 	,colTemp="TA_Avg"       ##<< column name of air temperature inside chamber [°C]
     ,colPressure="Pa"       ##<< column name of air pressure inside chamber [Pa]
-	,fRegress = c(regressFluxLinear, regressFluxTanh)	##<< vector of functions to yield a single flux estimate, see details  
+	,fRegress = c(regressFluxLinear, regressFluxTanh)	##<< list of functions to yield a single flux estimate, see details  
   	,volume=1               ##<< volume inside the chamber im [m3]
 	,isEstimateLeverage	= TRUE	##<< set to FALSE to omit the time consuming bootstrap for uncertainty due to leverage
 ){
@@ -67,12 +67,12 @@ attr(calcClosedChamberFlux,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
     ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
-	conc <- ds$CO2_dry <- corrConcDilution(ds)
 	
-    resLin <- calcClosedChamberFlux(ds, fRegress=regressFluxLinear)
-	resSquare <- calcClosedChamberFlux(ds, fRegress=regressFluxSquare)
+	conc <- ds$CO2_dry <- corrConcDilution(ds)
+    resLin <- calcClosedChamberFlux(ds, fRegress=list(regressFluxLinear))
+	resSquare <- calcClosedChamberFlux(ds, fRegress=list(regressFluxSquare))
 	#resExp <- calcClosedChamberFlux(ds, fRegress=regressFluxExp )
-	resTanh <- calcClosedChamberFlux(ds, fRegress=regressFluxTanh )
+	resTanh <- calcClosedChamberFlux(ds, fRegress=list(regressFluxTanh ))
 	
 	times <- ds$TIMESTAMP
 	times0 <- as.numeric(times) - as.numeric(times[1])
