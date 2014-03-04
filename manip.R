@@ -52,8 +52,8 @@ system.time(res <- ddply( 	dsChunksClean, .(iChunk), function(dsi){
 #stopCluster(cl)
 
 # relate the flux per chamber to flux per ground area (mumol /s / m2)
-res$CO2_fluxA <-  res$CO2_flux / 0.6*0.6
-res$CO2_fluxA_sd <-  res$CO2_flux_sd / 0.6*0.6
+res$CO2_fluxA <-  res$CO2_flux / (0.6*0.6)
+res$CO2_fluxA_sd <-  res$CO2_flux_sd / (0.6*0.6)
 res
 
 data(collarCodes)
