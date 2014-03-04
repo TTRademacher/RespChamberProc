@@ -193,7 +193,7 @@ regressFluxExp <- function(
 	b0 <- -coefficients(lm1)[2]
 	r0 <- a0/-b0
 	nlm1 <- try(nls( conc ~ r/-b * exp(-b*timesSec) + c
-		,start = list(r = r, b =b, c=c0)
+		,start = list(r = r0, b =b0, c=c0)
 		,control=nls.control(tol = 1e-03, maxiter=200, minFactor=1/1024/4)
 	), silent=TRUE)
 	if( inherits(nlm1,"try-error") ){

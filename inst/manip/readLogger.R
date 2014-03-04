@@ -2,7 +2,9 @@ ds0 <- readDat("tmp/MANIP_Ch1_1.dat", tz="CET")
 
 ds <- subset(ds0, as.numeric(TIMESTAMP) >= as.numeric(as.POSIXct("2014-03-03 00:00:01 CET")))
 ds$CO2_dry <- corrConcDilution(ds, colConc = "CO2_LI840", colVapour = "H2O_LI840")
+ds$H2O_dry <- corrConcDilution(ds, colConc = "H2O_LI840", colVapour = "H2O_LI840")
 ds$Pa <- ds$AirPres * 100   # convert hPa to Pa
+ds$VPD <- calcVPD( ds$SurTemp, ds$Pa, ds$H2O_LI840)
 
 #dsChunksClean <- subsetContiguous(ds)
 dsChunksClean <- subsetContiguous(ds, fIsBadChunk=function(dsi){ var(dsi$CO2_dry)==0})
@@ -11,6 +13,8 @@ length(unique(dsChunksClean$iChunk))
 # plot the time series
 library(ggplot2)
 p1 <- ggplot( dsChunksClean, aes(x=TIMESTAMP, y=CO2_dry) ) + geom_point() + facet_wrap( ~ iChunk, scales = "free")
+p2 <- ggplot( dsChunksClean, aes(x=TIMESTAMP, y=H2O_dry) ) + geom_point() + facet_wrap( ~ iChunk, scales = "free")
+p3 <- ggplot( dsChunksClean, aes(x=TIMESTAMP, y=H2O_LI840) ) + geom_point() + facet_wrap( ~ iChunk, scales = "free")
 
 #-- calculate flux and extract environmental conditions, may be parallelized
 library(plyr)
@@ -31,15 +35,20 @@ system.time(res <- ddply( 	dsChunksClean, .(iChunk), function(dsi){
 			# get additional environmental variables at the initial time
 			dsiInitial <- dsi[ 1, ,drop=FALSE]
 			cbind( data.frame( time=dsiInitial[,"TIMESTAMP"], collar=collar, CO2_flux=res[1], CO2_flux_sd=res[2] )
-				, dsiInitial[,c("Chamber","AirTemp","AirPres","PAR","BodyTemp","SurTemp","SoilTemp","SoilMoist")] )
+				, dsiInitial[,c("Chamber","AirTemp","AirPres","PAR","SurTemp","SoilTemp","SoilMoist","VPD")] )
 }
-, .parallel=TRUE
+#, .parallel=TRUE
 ))
 
 #stopCluster(cl)
 
-res
+# relate the flux per chamber to flux per ground area (mumol /s / m2)
+res$CO2_fluxA <-  res$CO2_flux / 0.6*0.6
+res$CO2_fluxA_sd <-  res$CO2_flux_sd / 0.6*0.6
 
+
+plot( CO2_flux ~ PAR, res )\
+plot( CO2_flux ~ AirTemp, res )
 
 
 
