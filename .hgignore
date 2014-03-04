@@ -13,5 +13,6 @@ syntax: regexp
 syntax: glob
 .Rhistory
 
+Rplots.pdf
 syntax: regexp
 ^inst/manip/Codes SMANIE\.xlsx$

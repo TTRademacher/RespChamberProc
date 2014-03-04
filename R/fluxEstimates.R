@@ -9,6 +9,7 @@ calcClosedChamberFlux <- function(
 	,fRegress = c(regressFluxLinear, regressFluxTanh)	##<< list of functions to yield a single flux estimate, see details  
   	,volume=1               ##<< volume inside the chamber im [m3]
 	,isEstimateLeverage	= TRUE	##<< set to FALSE to omit the time consuming bootstrap for uncertainty due to leverage
+  ,isStopOnError = TRUE   ##<< set to FALSE to not stop execution on errors, but report NAs
 ){
 	##seealso<< \code{\link{RespChamberProc}}
 	
@@ -25,45 +26,50 @@ calcClosedChamberFlux <- function(
   times <- dsl[,colTime]
   times0 <- as.numeric(times) - as.numeric(times[1])
   tLag <- as.numeric(timesOrig[ dslRes$lagIndex ]) - as.numeric(timesOrig[1])
+  abline(v=tLag+ds[1,colTime] )
   conc <- dsl[,colConc]
 
   # removed check for linear fit
-
-  fluxEstL <- lapply( fRegress, function(fReg){	
-  	fluxEst <- fReg( conc ,  times)
-  })
-  iBest <- which.min( do.call(rbind,fluxEstL)[,3] )
-  fReg <- fRegress[[iBest]]
-  fluxEst <- fluxEstL[[iBest]]
-	#lines( fitted(attr(fluxEst,"model")) ~  times0 , col="maroon")
-	#abline( coefficients(attr(fluxEst,"model"))[1], fluxEst[1], col="blue" )
-  leverageEst <- if( isTRUE(isEstimateLeverage) ) sigmaBootLeverage(conc, times, fRegress=fReg) else 0
-  ##details<<
-  ## There are two kinds of uncertainty associated with the flux.
-  ## The first comes from the uncertainty of the slope of concentration increase.
-  ## The second comes from the leverage of starting and end points of the regression (estimated by a bootstrap)
-  ## return value sdFlux is the maximum of those two components
-  
-  #correct fluxes for density and express per chamber instead of per mol air
-  fluxEstTotal = corrFluxDensity(fluxEst, volume = volume
-                  , temp = ds[ dslRes$lagIndex,colTemp ]
-                  , pressure = ds[ dslRes$lagIndex,colPressure ])
-  leverageEstTotal = corrFluxDensity(leverageEst, volume = volume
-                                     , temp = ds[ dslRes$lagIndex,colTemp ]
-                                     , pressure = ds[ dslRes$lagIndex,colPressure ])
-  
-  #corrFluxDensity( dsl, vol=2)
-	##value<< numceric vector with entries
-	res <- c(
-		flux = as.numeric(fluxEstTotal[1])			        ##<< the estimate of the CO2 flux [mumol / s]
-		,sdFlux = max(fluxEstTotal[2],leverageEstTotal)	##<< the standard deviation of the CO2 flux
-		,tLag = tLag		                                ##<< time of lag phase in seconds
-		,lagIndex = dslRes$lagIndex 					##<< index of the row at the end of lag-time
-		,sdFluxRegression = as.numeric(fluxEstTotal[2]) ##<< the standard deviation of the flux by a single regression of CO2 flux
-		,sdFluxLeverage = leverageEstTotal	            ##<< the standard deviation of the flux by leverage of starting or end values of the time series
-	)
-	attr(res,"model") <- attr(fluxEst, "model")
-	res
+  # plot( conc ~ times )
+  res <- try({
+    fluxEstL <- lapply( fRegress, function(fReg){	
+    	fluxEst <- fReg( conc ,  times)
+    })
+    iBest <- which.min( do.call(rbind,fluxEstL)[,3] )
+    fReg <- fRegress[[iBest]]
+    fluxEst <- fluxEstL[[iBest]]
+  	#lines( fitted(attr(fluxEst,"model")) ~  times0 , col="maroon")
+  	#abline( coefficients(attr(fluxEst,"model"))[1], fluxEst[1], col="blue" )
+    leverageEst <- if( isTRUE(isEstimateLeverage) ) sigmaBootLeverage(conc, times, fRegress=fReg) else 0
+    ##details<<
+    ## There are two kinds of uncertainty associated with the flux.
+    ## The first comes from the uncertainty of the slope of concentration increase.
+    ## The second comes from the leverage of starting and end points of the regression (estimated by a bootstrap)
+    ## return value sdFlux is the maximum of those two components
+    
+    #correct fluxes for density and express per chamber instead of per mol air
+    fluxEstTotal = corrFluxDensity(fluxEst, volume = volume
+                    , temp = ds[ dslRes$lagIndex,colTemp ]
+                    , pressure = ds[ dslRes$lagIndex,colPressure ])
+    leverageEstTotal = corrFluxDensity(leverageEst, volume = volume
+                                       , temp = ds[ dslRes$lagIndex,colTemp ]
+                                       , pressure = ds[ dslRes$lagIndex,colPressure ])
+    
+    #corrFluxDensity( dsl, vol=2)
+  	##value<< numceric vector with entries
+  	res <- c(
+  		flux = as.numeric(fluxEstTotal[1])			        ##<< the estimate of the CO2 flux [mumol / s]
+  		,sdFlux = max(fluxEstTotal[2],leverageEstTotal)	##<< the standard deviation of the CO2 flux
+  		,tLag = tLag		                                ##<< time of lag phase in seconds
+  		,lagIndex = dslRes$lagIndex 					##<< index of the row at the end of lag-time
+  		,sdFluxRegression = as.numeric(fluxEstTotal[2]) ##<< the standard deviation of the flux by a single regression of CO2 flux
+  		,sdFluxLeverage = leverageEstTotal	            ##<< the standard deviation of the flux by leverage of starting or end values of the time series
+  	)
+    attr(res,"model") <- attr(fluxEst, "model")
+    res
+  }, silent=TRUE)    
+  if( inherits(res,"try-error") ) res <- structure(rep(NA_real_,6),names=c("flux","sdFlux","tLag","lagIndex","sdFluxRegression","sdFluxLeverage"))
+  res
 }
 attr(calcClosedChamberFlux,"ex") <- function(){
 	data(chamberLoggerEx1s)
