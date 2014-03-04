@@ -4,60 +4,9 @@ ds <- subset(ds0, as.numeric(TIMESTAMP) >= as.numeric(as.POSIXct("2014-03-03 00:
 ds$CO2_dry <- corrConcDilution(ds, colConc = "CO2_LI840", colVapour = "H2O_LI840")
 ds$Pa <- ds$AirPres * 100   # convert hPa to Pa
 
-.tmp.f <- function(){
-	plot( CO2_LI840 ~ TIMESTAMP, ds)
-	
-	dsi <- subset( ds, Collar == 1)
-	timeSec <- as.numeric(dsi$TIMESTAMP) - as.numeric( dsi$TIMESTAMP[1] )
-	dsi <- subset(dsi, timeSec < 4*60 )
-	
-	plot( CO2_LI840 ~ TIMESTAMP, dsi)
-	
-	
-	dsi$CO2_dry <- corrConcDilution(dsi, colConc = "CO2_LI840", colVapour = "H2O_LI840")
-	dsi$Pa <- dsi$AirPres * 100   # convert hPa to Pa
-	res <- calcClosedChamberFlux(dsi, colTemp = "AirTemp", colPressure = "Pa", fRegress = c(regressFluxLinear, 
-					regressFluxTanh), volume = 0.6*0.6*0.6, isEstimateLeverage = TRUE)
-	
-	#plotting
-	conc <- ds$CO2_dry <- corrConcDilution(ds)
-	times <- ds$TIMESTAMP
-	times0 <- as.numeric(times) - as.numeric(times[1])
-	times0Fit <- times0[times0>res["tLag"] ]
-	#length(times0Fit)
-	plot( ds$CO2_dry ~ times0, xlab="time (s)", ylab="" ); mtext("CO2_dry (ppm)",2,2,las=0)
-	abline(v=res["tLag"], col="grey", lty="dotted")
-	lines( -fitted(attributes(res)$model) ~ times0Fit , col="red" )
-	
-	ds$TA_Avg <- ds$AirTemp
-	
-	library(plyr)
-	#?dlply
-}
-
-#--  disect the entire timeSeries into chunks that are separated by 
-# a change in collar number or a time difference of more than 20 seconds
-timeDiff <- diff(as.numeric(ds$TIMESTAMP))
-iGaps <-  which( timeDiff > 20)   # 20 seconds different measurement time series
-iCollarChanges <- which( diff(ds$Collar) != 0 )
-iChunks <- c( 1, sort(union(iCollarChanges, iGaps)), nrow(ds) ) 
-dsChunksL <- lapply( 2:length(iChunks), function(i){
-			cbind( iChunk=i-1, ds[(iChunks[i-1]+1):(iChunks[i]), ,drop=FALSE])
-		}) 
-
-#--  get of all the chunks with a zero in collar, less than 20 row, less than a minute or constant CO2
-#sapply( dsChunks, nrow )
-#sapply( dsChunks, function(dsi){ dsi$Collar[1] })
-#dsia <- dsChunks[[4]]	
-#dsia <- dsChunks[[47]]	
-dsChunksClean <- do.call( rbind, lapply(dsChunksL, function(dsia){
-			collar <- dsia$Collar[1] 
-			dsi <- subset(dsia, is.finite(CO2_dry) )
-			timeSec <- as.numeric(dsi$TIMESTAMP) - as.numeric( dsi$TIMESTAMP[1] )
-			if( collar == 0 || nrow(dsi) < 20 || max(timeSec) < 1*60 || var(dsi$CO2_dry)==0  ){
-				return( NULL )
-			}else return(dsi)
-}))
+#dsChunksClean <- subsetContiguous(ds)
+dsChunksClean <- subsetContiguous(ds, fIsBadChunk=function(dsi){ var(dsi$CO2_dry)==0})
+length(unique(dsChunksClean$iChunk))
 
 # plot the time series
 library(ggplot2)
@@ -79,14 +28,17 @@ system.time(res <- ddply( 	dsChunksClean, .(iChunk), function(dsi){
 			#plot( CO2_dry ~ timeSec, dsi )
 			res <- calcClosedChamberFlux(dsi, colTemp = "AirTemp", colPressure = "Pa", fRegress = c(regressFluxLinear, 
 							regressFluxTanh), volume = 0.6*0.6*0.6, isEstimateLeverage = TRUE)
-			dsiLag <- dsi[ res["lagIndex"], ,drop=FALSE]
-			cbind( data.frame( time=dsiLag[,"TIMESTAMP"], collar=collar, CO2_flux=res[1], CO2_flux_sd=res[2] )
-				, dsiLag[,c("Chamber","AirTemp","AirPres","PAR","BodyTemp","SurTemp","SoilTemp","SoilMoist")] )
+			# get additional environmental variables at the initial time
+			dsiInitial <- dsi[ 1, ,drop=FALSE]
+			cbind( data.frame( time=dsiInitial[,"TIMESTAMP"], collar=collar, CO2_flux=res[1], CO2_flux_sd=res[2] )
+				, dsiInitial[,c("Chamber","AirTemp","AirPres","PAR","BodyTemp","SurTemp","SoilTemp","SoilMoist")] )
 }
 , .parallel=TRUE
 ))
 
 #stopCluster(cl)
+
+res
 
 
 
