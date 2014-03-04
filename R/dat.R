@@ -12,8 +12,8 @@ readDat <- function(
 ){
 	##details<< 
 	## Assumes that there
-	setClass("myDate")
-	setAs("character","myDate", function(from) as.POSIXct(from, format=formatTS, tz=tz) )
+	setClass("myDate", where=globalenv())
+	setAs("character","myDate", function(from) as.POSIXct(from, format=formatTS, tz=tz), where=globalenv() )
 	fileInfo <- readLines(fName, n=nRowsFileInfo )
 	colInfo <- read.table(fName, header=TRUE, skip=nRowsFileInfo, nrows=max(1,nRowsColInfo), sep=sep)
 	colClasses[colsTimeStamp] <- "myDate"

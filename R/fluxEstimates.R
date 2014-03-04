@@ -26,7 +26,7 @@ calcClosedChamberFlux <- function(
   times <- dsl[,colTime]
   times0 <- as.numeric(times) - as.numeric(times[1])
   tLag <- as.numeric(timesOrig[ dslRes$lagIndex ]) - as.numeric(timesOrig[1])
-  abline(v=tLag+ds[1,colTime] )
+  #abline(v=tLag+ds[1,colTime] )
   conc <- dsl[,colConc]
 
   # removed check for linear fit
