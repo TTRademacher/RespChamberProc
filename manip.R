@@ -1,6 +1,7 @@
 library(RespChamberProc)
 
-ds0 <- readDat("tmp/MANIP_Ch1_1.dat", tz="CET")
+fileName <- "tmp/MANIP_Ch1_1.dat"
+ds0 <- readDat(fileName, tz="CET")
 
 ds <- subset(ds0, as.numeric(TIMESTAMP) >= as.numeric(as.POSIXct("2014-03-03 00:00:01 CET")))
 ds$CO2_dry <- corrConcDilution(ds, colConc = "CO2_LI840", colVapour = "H2O_LI840")
@@ -17,6 +18,7 @@ library(ggplot2)
 p1 <- ggplot( dsChunksClean, aes(x=TIMESTAMP, y=CO2_dry) ) + geom_point() + facet_wrap( ~ iChunk, scales = "free")
 p2 <- ggplot( dsChunksClean, aes(x=TIMESTAMP, y=H2O_dry) ) + geom_point() + facet_wrap( ~ iChunk, scales = "free")
 p3 <- ggplot( dsChunksClean, aes(x=TIMESTAMP, y=H2O_LI840) ) + geom_point() + facet_wrap( ~ iChunk, scales = "free")
+p1
 
 #-- calculate flux and extract environmental conditions, may be parallelized
 library(plyr)
@@ -52,10 +54,14 @@ system.time(res <- ddply( 	dsChunksClean, .(iChunk), function(dsi){
 # relate the flux per chamber to flux per ground area (mumol /s / m2)
 res$CO2_fluxA <-  res$CO2_flux / 0.6*0.6
 res$CO2_fluxA_sd <-  res$CO2_flux_sd / 0.6*0.6
+res
+
+data(collarCodes)
+res2  <- merge(res, collarCodes)
+
+#write.csv(res2,paste(fileName,"_results.csv",sep=""))
 
 
-plot( CO2_flux ~ PAR, res )
-plot( CO2_flux ~ AirTemp, res )
 
 
 
