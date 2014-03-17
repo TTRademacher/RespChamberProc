@@ -9,15 +9,16 @@ readDat <- function(
 	,colsTimeStamp=1		##<< integer vector: colums with time stamp column (will be set to POSIXct
 	,formatTS="%Y-%m-%d %H:%M:%S"	##<< format of the timestamp columns, see \code{\link{strptime}}, e.g. 
 	,tz="UTC"				##<< specify a time zone when converting to POSIXct, default: current local e.g CET, UTC
+	,na.strings=c('','NA','NAN','"NAN"')
 ){
 	##details<< 
 	## Assumes that there
 	setClass("myDate", where=globalenv())
 	setAs("character","myDate", function(from) as.POSIXct(from, format=formatTS, tz=tz), where=globalenv() )
 	fileInfo <- readLines(fName, n=nRowsFileInfo )
-	colInfo <- read.table(fName, header=TRUE, skip=nRowsFileInfo, nrows=max(1,nRowsColInfo), sep=sep)
+	colInfo <- read.table(fName, header=TRUE, skip=nRowsFileInfo, nrows=max(1,nRowsColInfo), sep=sep, na.strings=na.strings)
 	colClasses[colsTimeStamp] <- "myDate"
-	rawData <- read.table(fName, header=FALSE, skip=nRowsFileInfo+1+nRowsColInfo, sep=sep, ...
+	rawData <- read.table(fName, header=FALSE, skip=nRowsFileInfo+1+nRowsColInfo, sep=sep, na.strings=na.strings, ...
 					,colClasses=colClasses)
 	colnames(rawData) <- colnames(colInfo)	
 	#plot( CO2_Avg ~ TIMESTAMP, data=rawData )

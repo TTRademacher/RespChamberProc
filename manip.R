@@ -1,6 +1,8 @@
 library(RespChamberProc)
 
 fileName <- "tmp/MANIP_Ch1_1.dat"
+#fileName <- "tmp/MANIP_Ch1_2.dat"
+#fileName <- "tmp/MANIP_Ch3_0.dat"
 ds0 <- readDat(fileName, tz="CET")
 
 ds <- subset(ds0, as.numeric(TIMESTAMP) >= as.numeric(as.POSIXct("2014-03-03 00:00:01 CET")))
