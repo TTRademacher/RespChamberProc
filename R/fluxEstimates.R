@@ -9,7 +9,7 @@ calcClosedChamberFlux <- function(
 	,fRegress = c(lin=regressFluxLinear, tanh=regressFluxTanh, exp=regressFluxExp)	##<< list of functions to yield a single flux estimate, see details  
   	,volume=1               ##<< volume inside the chamber im [m3]
 	,isEstimateLeverage	= TRUE	##<< set to FALSE to omit the time consuming bootstrap for uncertainty due to leverage
-  ,isStopOnError = TRUE   ##<< set to FALSE to not stop execution on errors, but report NAs
+    ,isStopOnError = TRUE   ##<< set to FALSE to not stop execution on errors, but report NAs
 ){
 	##seealso<< \code{\link{RespChamberProc}}
 	
@@ -33,6 +33,8 @@ calcClosedChamberFlux <- function(
   # removed check for linear fit
   # plot( conc ~ times )
   res <- #try({
+	#fReg <- fRegress[[1]]
+	#trace(fReg, recover)
     fluxEstL <- lapply( fRegress, function(fReg){	
     	fluxEst <- fReg( conc ,  times)
     })
@@ -41,7 +43,9 @@ calcClosedChamberFlux <- function(
     fluxEst <- fluxEstL[[iBest]]
   	#lines( fitted(attr(fluxEst,"model")) ~  times0 , col="maroon")
   	#abline( coefficients(attr(fluxEst,"model"))[1], fluxEst[1], col="blue" )
-    leverageEst <- if( isTRUE(isEstimateLeverage) ) sigmaBootLeverage(conc, times, fRegress=fReg) else NA
+	coefEst <- coefficients(attr(fluxEst,"model"))
+    leverageEst <- if( isTRUE(isEstimateLeverage) ) sigmaBootLeverage(conc, times, fRegress=fReg
+		, coefStart=coefEst ) else NA
     ##details<<
     ## There are two kinds of uncertainty associated with the flux.
     ## The first comes from the uncertainty of the slope of concentration increase.
@@ -308,25 +312,28 @@ regressFluxTanh <- function(
 		conc	  ##<< numeric vector of CO2 concentrations []
 		,times	  ##<< times of conc measurements	[seconds]
 		,cSatFac=2  ##<< Position of the initial saturation (0 start, 1 end, >1 outside measured range)
-		,useCorAR1=TRUE	##<< try to account for autocorrelation
+		,corAR1=TRUE	##<< try to account for autocorrelation
+		,start=c()	##<< numeric vector of starting parameters. May provide from last bootstrap to speed up fitting  
 ){
 	##seealso<< \code{\link{regressFluxSquare}}
 	##seealso<< \code{\link{RespChamberProc}}
 	#
 	timesSec <- as.numeric(times) - as.numeric(times[1])
 	fluxLin <- coefficients(lm(conc ~ timesSec ))[2]
-	concP <- if( fluxLin < 0 ) -conc else conc		# invert, do not forget to invert again when flux calculated
-	# increasing concentration
-	# set the saturation twice above the range
-	cRange <- quantile( concP , probs=c(0.05,0.95))
-	cSat0 <- cRange[1] + cSatFac*diff(cRange)
-	#abline(h=cSat0)
-	#plot( concP-cSat0 ~ timesSec )
-	lm1 <- lm(head(concP,30)-cSat0 ~ head(timesSec,30) )
-	#abline(coefficients(lm1))
-	# c0 is the range to cover (= -intercept from the linear model)
-	s0 <- coefficients(lm1)[2]	     # initial slope
-	c00 <- -coefficients(lm1)[1]     # range to cover
+	if( !length(start) ){
+		concP <- if( fluxLin < 0 ) -conc else conc		# invert, do not forget to invert again when flux calculated
+		# increasing concentration
+		# set the saturation twice above the range
+		cRange <- quantile( concP , probs=c(0.05,0.95))
+		cSat0 <- cRange[1] + cSatFac*diff(cRange)
+		#abline(h=cSat0)
+		#plot( concP-cSat0 ~ timesSec )
+		lm1 <- lm(head(concP,30)-cSat0 ~ head(timesSec,30) )
+		#abline(coefficients(lm1))
+		# c0 is the range to cover (= -intercept from the linear model)
+		s0 <- coefficients(lm1)[2]	     # initial slope
+		c00 <- -coefficients(lm1)[1]     # range to cover
+	}
 	#plot( (concP - cSat0)/c00 +1  ~ timesSec )		# that matches tanh def between 0 and 1
 	#lines( tanh(timesSec*s0/c00) ~ timesSec)	 	# tanh function  - set equal to above and solve for concP
 	#plot( concP ~ timesSec )
@@ -339,66 +346,37 @@ regressFluxTanh <- function(
 			# deprecated use nlsLM from minpack.lm to switch between Newten and Levenberg, avoid singular gradient in near-linear cases
 			# http://www.r-bloggers.com/a-better-nls/
 			nlm1 <- if( fluxLin < 0 ){
-					gc1 <- try( gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
-						,start = list(s=s0, cSat = cSat0, c0 = c00)
+					gc1 <- gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
+						,start = if(length(start)) start else list(s=s0, cSat = cSat0, c0 = c00)
 						,params= c(s+cSat+c0~1)
-						,correlation=corAR1( 0.2, form = ~ timesSec)
-					), silent=TRUE)
-					if( inherits(gc1,"try-error") ){
-						# retry without autocorrelation
-						gc1 <- gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
-								,start = list(s=s0, cSat = cSat0, c0 = c00)
-								,params= c(s+cSat+c0~1)
-						)	
-					}	
-					gc1
+						,correlation=corAR1( 0.3, form = ~ timesSec)
+					)
 				} else {
 					# increasing concentrations
-					try( gc1 <-gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
-						,start = list(s=-s0, cSat = cSat0, c0 = c00)
+					gc1 <-gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
+						,start = if(length(start)) start else list(s=-s0, cSat = cSat0, c0 = c00)
 						,params= c(s+cSat+c0~1)
-						,correlation=corAR1( 0.2, form = ~ timesSec)
-					), silent=TRUE)
-					if( inherits(gc1,"try-error") ){
-						# retry without autocorrelation
-						gc1 <-gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
-								,start = list(s=-s0, cSat = cSat0, c0 = c00)
-								,params= c(s+cSat+c0~1)
-								)
-					}
-					gc1
+						,correlation=corAR1( 0.3, form = ~ timesSec)
+					)
 				}
 	,silent=TRUE)
-	if( inherits(nlm1,"try-error") ){
-		# retry with fixed saturation level
-		#warning("Not able to fit tanh, retrying with fixed cSat - check plausibility of results.")
-		# fix cSat
-		cSat0s <- rep(cSat0, length(timesSec))
-		nlm1 <- if( fluxLin < 0 ){
-			gnls( conc ~  (tanh(timesSec*s/c0)-1)*c0 + cSat0s
-				,start = list(s=s0, c0 = c00)
-				,params= c(s+c0~1)
-				,correlation=corAR1( 0.2, form = ~ timesSec)
-			)
-		} else {
-			gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat0s
-				,start = list(s=s0, c0 = c00)
-				,params= c(s+c0~1)
-				,correlation=corAR1( 0.2, form = ~ timesSec)
-		)}
-	}
 	# lines(fitted(nlm1) ~ timesSec, col="orange" )
 	#
 	#lines( I(cSat0 + c00*(1-tanh(timesSec*(-s0)))) ~ timesSec, col="maroon"  ) 
 	#lines( fitted(nlm1) ~ timesSec, col="purple"  )
 	#plot(resid(nlm1) ~ timesSec )
 	#qqnorm( resid(nlm1) ); abline(0,1)
-	res <- c(
-			flux = coefficients(nlm1)[1]
-			,sdFlux = sqrt(vcov(nlm1)[1,1])
-			, AIC = AIC(nlm1)
-			,autoCorr = if( length(nlm1$modelStruct$corStruct) ) as.numeric(nlme:::coef.corAR1(nlm1$modelStruct$corStruct, unconstrained=FALSE)) else NA
-	)
+	res <- if( inherits(nlm1,"try-error") ) c(
+				flux = NA
+				,sdFlux = NA
+				, AIC = NA
+				,autoCorr =  NA 
+	) else c(
+				flux = coefficients(nlm1)[1]
+				,sdFlux = sqrt(vcov(nlm1)[1,1])
+				, AIC = AIC(nlm1)
+				,autoCorr =  as.numeric(nlme:::coef.corAR1(nlm1$modelStruct$corStruct, unconstrained=FALSE)) 
+		)		
 	attr(res,"model") <- nlm1
 	res
 	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
@@ -455,6 +433,7 @@ sigmaBootLeverage <- function(
 		,fRegress = regressFluxSquare	##<< function to yield a single flux estimate
 		,probs=c(0.05,0.5,0.95)			##<< percentiles for which the flux quantiels shoudl be returned
 		,nSample=80
+		,coefStart=c()	##<< numeric vector of starting parameters. May provide from last bootstrap to speed up fitting  
 ){
 	##seealso<< \code{\link{RespChamberProc}}
 	
@@ -469,10 +448,11 @@ sigmaBootLeverage <- function(
   closes <-  sample(close, nSample, replace = TRUE)
   zz <- sapply(1:nSample, function(i){
     subIndices <- starts[i]:closes[i]
-    fRegress( conc[subIndices], times[subIndices] )[1]
+    fRegress( conc[subIndices], times[subIndices], start=coefStart )[1]
   })
+  #plot(density(zz, na.rm=TRUE))
   ## a vector with first entry the standard deviation of the flux, and following entries quantiles for given argument \code{probs}
-  c( sd=sd(zz), quantile(zz, probs) ) 
+  c( sd=sd(zz, na.rm=TRUE), quantile(zz, probs, na.rm=TRUE) ) 
 }
 attr(sigmaBootLeverage,"ex") <- function(){
 	data(chamberLoggerEx1s)
