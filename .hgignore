@@ -16,3 +16,10 @@ syntax: glob
 Rplots.pdf
 syntax: regexp
 ^inst/manip/Codes SMANIE\.xlsx$
+
+syntax: regexp
+^paper14/tmp$
+syntax: regexp
+^paper14/Wutzler14_RespChamberProc\.pdf$
+syntax: regexp
+^paper14/Wutzler14_RespChamberProc\.synctex\.gz$
