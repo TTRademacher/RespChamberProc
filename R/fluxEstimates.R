@@ -10,6 +10,7 @@ calcClosedChamberFlux <- function(
   	,volume=1               ##<< volume inside the chamber im [m3]
 	,isEstimateLeverage	= TRUE	##<< set to FALSE to omit the time consuming bootstrap for uncertainty due to leverage
     ,isStopOnError = TRUE   ##<< set to FALSE to not stop execution on errors, but report NAs
+	,...					##<< further arguments to \code{\link{sigmaBootLeverage}}
 ){
 	##seealso<< \code{\link{RespChamberProc}}
 	
@@ -39,13 +40,24 @@ calcClosedChamberFlux <- function(
     	fluxEst <- fReg( conc ,  times)
     })
     iBest <- which.min( do.call(rbind,fluxEstL)[,3] )
+	if( !length(iBest) ){
+		warning("calcClosedChamberFlux: could not fit any of the specified functions to the concentration dataset")
+		res <- ( structure(rep(NA, 10), names=c("flux", "fluxMedian", "sdFlux", "tLag", "lagIndex", "autoCorr"
+											,"AIC","sdFluxRegression","sdFluxLeverage", "iFRegress") ))
+		res["tLag"] <- tLag		                                ##<< time of lag phase in seconds
+		res["lagIndex"] <- dslRes$lagIndex 
+		return(res)
+	}
     fReg <- fRegress[[iBest]]
     fluxEst <- fluxEstL[[iBest]]
   	#lines( fitted(attr(fluxEst,"model")) ~  times0 , col="maroon")
   	#abline( coefficients(attr(fluxEst,"model"))[1], fluxEst[1], col="blue" )
-	coefEst <- coefficients(attr(fluxEst,"model"))
+	mod <- attr(fluxEst,"model")
+	coefStart <- coefficients(mod)
+	tryAutoCorr <- is.finite( fluxEst["autoCorr"] )
+	#
     leverageEst <- if( isTRUE(isEstimateLeverage) ) sigmaBootLeverage(conc, times, fRegress=fReg
-		, coefStart=coefEst ) else NA
+		, coefStart=coefStart, tryAutoCorr=tryAutoCorr ) else NA
     ##details<<
     ## There are two kinds of uncertainty associated with the flux.
     ## The first comes from the uncertainty of the slope of concentration increase.
@@ -63,16 +75,18 @@ calcClosedChamberFlux <- function(
     #corrFluxDensity( dsl, vol=2)
   	##value<< list with entries
   	res <- c(
-  		flux = as.numeric(fluxEstTotal[1])			        ##<< the estimate of the CO2 flux [mumol / s]
+  		flux = as.numeric(fluxEstTotal[1])			    ##<< the estimate of the CO2 flux [mumol / s]
 		,fluxMedian = as.numeric(leverageEstTotal[3])
   		,sdFlux = max(fluxEstTotal["sdFlux"],leverageEstTotal["sd"], na.rm=TRUE)	##<< the standard deviation of the CO2 flux
-  		,tLag = tLag		                                ##<< time of lag phase in seconds
+  		,tLag = tLag		                            ##<< time of lag phase in seconds
   		,lagIndex = dslRes$lagIndex 					##<< index of the row at the end of lag-time
+		,autoCorr = as.numeric(fluxEst["autoCorr"])		##<< autocorrelation coefficient, NA if model with autocorrelation could not be fitted or had higher AIC than a model without autocorrelation
+		,AIC= AIC(mod)									##<< AIC goodness of fit for the model
   		,sdFluxRegression = as.numeric(fluxEstTotal["sdFlux"]) ##<< the standard deviation of the flux by a single regression of CO2 flux
-  		,sdFluxLeverage = as.numeric(leverageEstTotal["sd"])	    ##<< the standard deviation of the flux by leverage of starting or end values of the time series
+  		,sdFluxLeverage = as.numeric(leverageEstTotal["sd"])   ##<< the standard deviation of the flux by leverage of starting or end values of the time series
 		,iFRegress=as.numeric(iBest)					##<< index of the best (lowest AIC) regression function
   	)
-    attr(res,"model") <- attr(fluxEst, "model")
+    attr(res,"model") <- mod
     res
   #}, silent=TRUE)    
   if( inherits(res,"try-error") ) res <- structure(rep(NA_real_,6),names=c("flux","sdFlux","tLag","lagIndex","sdFluxRegression","sdFluxLeverage"))
@@ -139,41 +153,89 @@ attr(selectDataAfterLag,"ex") <- function(){
   abline(v=ret$lagIndex, col="red")
 }
 
+regressFluxLinear <- function(
+		### Estimate the initial flux by polynomial regression
+		conc	  ##<< numeric vector of CO2 concentrations []
+		,times	##<< times of conc measurements	[seconds]
+		,start=c()	##<< numeric vector of starting parameters. May provide from last bootstrap to speed up fitting  
+		,tryAutoCorr=TRUE	##<< set to FALSE to not try to fit model with autocorrelation
+){
+	##seealso<< \code{\link{regressFluxSquare}}
+	##seealso<< \code{\link{RespChamberProc}}
+	
+	timesSec <- as.numeric(times) - as.numeric(times[1])
+	lm1 <- gls( conc ~ timesSec	 )
+	lm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(lm1,"try-error")) lm1 else
+				gls( conc ~ timesSec
+						,correlation=corAR1( 0.3, form = ~ timesSec)
+				)
+	nlmBest <- if( !inherits(lm1Auto,"try-error") && (AIC(lm1Auto) < AIC(lm1)) ) lm1Auto else lm1
+	corStruct <- nlmBest$modelStruct$corStruct
+	#
+	res <- c(
+			flux = as.vector(coefficients(nlmBest)[2])
+			,sdFlux = as.vector(sqrt(diag(vcov(nlmBest))[2]))
+			,AIC=AIC(nlmBest)
+			,autoCorr =  if( length(corStruct) ) as.numeric(nlme:::coef.corAR1(corStruct, unconstrained=FALSE)) else NA 
+	)
+	attr(res,"model") <- nlmBest
+	res
+	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
+}
+attr(regressFluxLinear,"ex") <- function(){
+	data(chamberLoggerEx1s)
+	ds <- chamberLoggerEx1s
+	conc <- ds$CO2_Avg
+	times <- ds$TIMESTAMP
+	plot( conc ~ times )
+	regressFluxLinear( conc, times  )
+}
+
+
 regressFluxSquare <- function(
 		### Estimate the initial flux and its standard deviation by polynomial regression
 		conc	  ##<< numeric vector of CO2 concentrations [ppm]
 		,times	##<< times of conc measurements	[seconds]
+		,start=c()	##<< numeric vector of starting parameters. Not used here.  
+		,tryAutoCorr=TRUE	##<< set to FALSE to not try to fit model with autocorrelation
 ){
-  ##seealso<< \code{\link{RespChamberProc}}
-  
-  ##details<< 
-  ## The flux is calculated at the slop of the concnetration change. By
-  ## changing the concentration gradient, however, the flux is disturbed. In effect the 
-  ## flux will decline over time and concentrations go towards a saturation.
-  ##
-  ## This method fits a polynomial regression to the concentrations and infers the slope at reports
-  ## the slope at the initial time.
-  ##
-  ## Other functional forms can be fitted to estimate the initial slope:
-  ## \itemize{
-  ##  \item{ Linear: \code{\link{regressFluxLinear}}  }
-  ##  \item{ Hyperbolic tangent saturating function: \code{\link{regressFluxTanh}}  }
-  ##  \item{ Exponential: \code{\link{regressFluxExp}}  }
-  ##  \item{ Michaelis-Menten type saturating function: \code{\link{regressFluxMenten}}  }
-  ## }
-  ##
-  ## The hyperbolic tangent form (\code{\link{regressFluxTanh}}) has the advantage that 
-  ## initially the flux is changing only very slowly. In contrast, whith the exponential form the
-  ## slope changes much at the beginning.
-		  
-  timesSec <- as.numeric(times) - as.numeric(times[1])
-  lm1 <- lm( conc ~ poly(timesSec,2,raw = TRUE) )
-  res <- c(
-    flux = as.vector(coefficients(lm1)[2])
-    ,sdFlux = summary(lm1)$coefficients[2,2]
-	, AIC = AIC(lm1)
-    )
-	attr(res,"model") <- lm1
+	  ##seealso<< \code{\link{RespChamberProc}}
+	  
+	  ##details<< 
+	  ## The flux is calculated at the slop of the concnetration change. By
+	  ## changing the concentration gradient, however, the flux is disturbed. In effect the 
+	  ## flux will decline over time and concentrations go towards a saturation.
+	  ##
+	  ## This method fits a polynomial regression to the concentrations and infers the slope at reports
+	  ## the slope at the initial time.
+	  ##
+	  ## Other functional forms can be fitted to estimate the initial slope:
+	  ## \itemize{
+	  ##  \item{ Linear: \code{\link{regressFluxLinear}}  }
+	  ##  \item{ Hyperbolic tangent saturating function: \code{\link{regressFluxTanh}}  }
+	  ##  \item{ Exponential: \code{\link{regressFluxExp}}  }
+	  ##  \item{ Michaelis-Menten type saturating function: \code{\link{regressFluxMenten}}  }
+	  ## }
+	  ##
+	  ## The hyperbolic tangent form (\code{\link{regressFluxTanh}}) has the advantage that 
+	  ## initially the flux is changing only very slowly. In contrast, whith the exponential form the
+	  ## slope changes much at the beginning.
+			  
+	  timesSec <- as.numeric(times) - as.numeric(times[1])
+	  lm1 <- gls( conc ~ poly(timesSec,2,raw = TRUE) ) 
+	  lm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(lm1,"try-error")) lm1 else
+				  gls( conc ~ poly(timesSec,2,raw = TRUE)
+						  ,correlation=corAR1( 0.3, form = ~ timesSec)
+				  )
+	  nlmBest <- if( !inherits(lm1Auto,"try-error") && (AIC(lm1Auto) < AIC(lm1)) ) lm1Auto else lm1
+	  corStruct <- nlmBest$modelStruct$corStruct
+	  res <- c(
+	    flux = as.vector(coefficients(nlmBest)[2])
+	    ,sdFlux =  as.vector(sqrt(diag(vcov(nlmBest))[2]))
+		,AIC=AIC(nlmBest)
+		,autoCorr =  if( length(corStruct) ) as.numeric(nlme:::coef.corAR1(corStruct, unconstrained=FALSE)) else NA 
+	)
+	attr(res,"model") <- nlmBest
 	res
 	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
 }
@@ -182,16 +244,19 @@ attr(regressFluxSquare,"ex") <- function(){
   ds <- chamberLoggerEx1s
   conc <- ds$CO2_dry <- corrConcDilution(ds)  
   times <- ds$TIMESTAMP
-  regressFluxSquare( conc, times  )
+  res <- regressFluxSquare( conc, times  )
   plot( conc ~ times)
-  #lines( fitted(lm1) ~ times )
+  m <- attr(res,"model")
+  #lines( fitted(m) ~ times )
 }
 
 regressFluxExp <- function(
 		### Estimate the initial flux by fitting an exponentially saturating function
-		conc	  ##<< numeric vector of CO2 concentrations []
-		,times	##<< times of conc measurements	[seconds]
-		,cSatFac=2  ##<< Position of the initial saturation (0 start, 1 end, >1 outside measured range) 
+		conc	  			##<< numeric vector of CO2 concentrations []
+		,times				##<< times of conc measurements	[seconds]
+		,start=c()			##<< numeric vector of starting parameters. May provide from last bootstrap to speed up fitting  
+		,tryAutoCorr=TRUE	##<< set to FALSE to not try to fit model with autocorrelation
+		,cSatFac=2  		##<< Position of the initial saturation (0 start, 1 end, >1 outside measured range)
 ){
 	##seealso<< \code{\link{regressFluxSquare}}
 	##seealso<< \code{\link{RespChamberProc}}
@@ -199,56 +264,64 @@ regressFluxExp <- function(
 	timesSec <- as.numeric(times) - as.numeric(times[1])
 	#plot( conc ~ timesSec )
 	fluxLin <- coefficients(lm(conc ~ timesSec ))[2]
-	concP <- if( fluxLin < 0 ) conc else -conc		# invert to decreasing concentrations
-	#plot( concP ~ timesSec )
-	# increasing concentration
-	# set the saturation twice above the range
-	cRange <- quantile( concP , probs=c(0.05,0.95))
-	cSat0 <- cRange[1] - cSatFac*diff(cRange)
-	#abline(h=cSat0)
-	#plot( I(concP-cSat0) ~ timesSec )
-	cDiff <- concP-cSat0; cDiff[cDiff <= 0] <- NA
-	lm1 <- suppressWarnings( lm( log(cDiff) ~ timesSec ) )
-	#plot( log(conc-cSat0) ~ timesSec )
-	a0 <- exp(coefficients(lm1)[1])
-	b0 <- -coefficients(lm1)[2]
-	r0 <- a0/-b0
-	nlm1 <- if( fluxLin < 0 ){
-		nlm1 <- try(nls( conc ~ r/-b * exp(-b*timesSec) + c
-			,start = list(r = r0, b =b0, c=cSat0)
-			,control=nls.control(tol = 1e-03, minFactor=1/1024/4)
-		), silent=TRUE)
-	} else {
-		nlm1 <- try(nls( conc ~ r/b * exp(b*timesSec) - c		# concB -> -conc; b->-b; r->-r
-						,start = list(r = -r0, b =-b0, c=cSat0)
-						,control=nls.control(tol = 1e-03, minFactor=1/1024/4)
-				), silent=TRUE)
+	if( !length(start) ){
+		concP <- if( fluxLin < 0 ) conc else -conc		# invert to decreasing concentrations
+		#plot( concP ~ timesSec )
+		# increasing concentration
+		# set the saturation twice above the range
+		cRange <- quantile( concP , probs=c(0.05,0.95))
+		cSat0 <- cRange[1] - cSatFac*diff(cRange)
+		#abline(h=cSat0)
+		#plot( I(concP-cSat0) ~ timesSec )
+		cDiff <- concP-cSat0; cDiff[cDiff <= 0] <- NA
+		lm1 <- suppressWarnings( lm( log(cDiff) ~ timesSec ) )
+		#plot( log(conc-cSat0) ~ timesSec )
+		a0 <- exp(coefficients(lm1)[1])
+		b0 <- -coefficients(lm1)[2]
+		r0 <- a0/-b0
 	}
-	if( inherits(nlm1,"try-error") ){
-		nlm1 <- if( fluxLin < 0 ){
-				nlm1 <- nls( conc ~ r/-b * exp(-b*timesSec) + cSat0
-						,start = list(r = r0, b =b0)
-						,control=nls.control(tol = 1e-03, maxiter=200, minFactor=1/1024/4)
-				)
-			} else {
-				nlm1 <- nls( conc ~ r/b * exp(b*timesSec) - cSat0
-						,start = list(r = -r0, b =-b0)
-						,control=nls.control(tol = 1e-03, maxiter=200, minFactor=1/1024/4)
-				)
-			}
-	}
+	nlm1 <- try(
+		if( fluxLin < 0 ){
+			gnls( conc ~ r/-b * exp(-b*timesSec) + c
+					,params=r+b+c~1
+					,start = if( length(start) ) start else list(r = r0, b =b0, c=cSat0)
+					#,control=gls.control(tol = 1e-03, minFactor=1/1024/4)
+					,correlation=NULL
+			)
+		} else {
+				gnls( conc ~ r/b * exp(b*timesSec) - c		# concB -> -conc; b->-b; r->-r
+							,params=r+b+c~1
+							,start = if( length(start) ) start else list(r = -r0, b =-b0, c=cSat0)
+							#,control=gnls.control(tol = 1e-03, minFactor=1/1024/4)
+							,correlation=NULL
+					)
+		}
+	, silent=TRUE)
+	nlm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(nlm1,"try-error")) nlm1 else try(
+						update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec) )
+			, silent=TRUE)
 	#plot( conc ~ timesSec )
 	#lines( I(a0*exp(-b0*timesSec) + cSat0) ~ timesSec, col="maroon"  ) 
 	#lines( fitted(nlm1) ~ timesSec, col="blue"  ) 
 	#lines( fitted(nlm1) ~ timesSec, col="orange"  ) 
 	#plot(resid(nlm1) ~ timesSec )
 	#qqnorm( resid(nlm1) ); abline(0,1)
-	res <- c(
-			flux = coefficients(nlm1)[1]
-			,sdFlux = sqrt(vcov(nlm1)[1,1])
-			, AIC = AIC(nlm1)
-	)
-	attr(res,"model") <- nlm1
+	res <- if( inherits(nlm1,"try-error") ) c(
+				flux = NA
+				,sdFlux = NA
+				, AIC = NA
+				,autoCorr =  NA 
+		) else {
+		    nlmBest <- if( !inherits(nlm1Auto,"try-error") && (AIC(nlm1Auto) < AIC(nlm1)) ) nlm1Auto else nlm1
+			corStruct <- nlmBest$modelStruct$corStruct
+			c(
+			flux = coefficients(nlmBest)[1]
+			,sdFlux = sqrt(vcov(nlmBest)[1,1])
+			, AIC =  AIC(nlmBest) 
+			,autoCorr =  if( length(corStruct) ) as.numeric(nlme:::coef.corAR1(corStruct, unconstrained=FALSE)) else NA 
+			)
+		}
+	attr(res,"model") <- nlmBest
 	res
 	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
 }
@@ -257,63 +330,22 @@ attr(regressFluxExp,"ex") <- function(){
 	ds <- chamberLoggerEx1s
 	conc <- ds$CO2_dry <- corrConcDilution(ds)  
 	times <- ds$TIMESTAMP
-	regressFluxExp( conc, times  )
+	#trace(regressFluxExp, recover)	#untrace(regressFluxExp)
+	(res <- regressFluxExp( conc, times  ))
 	plot( conc ~ times)
-	#lines( fitted(lm1) ~ times )
+	m <- attr(res,"model")
+	lines( fitted(m) ~ times )
 }
 
 
-.regressFluxMenten <- function(
-		### Estimate the initial flux by fitting a Michaelis-Menten type saturating function
-		conc	  ##<< numeric vector of CO2 concentrations []
-		,times	##<< times of conc measurements	[seconds]
-){
-	##seealso<< \code{\link{regressFluxSquare}}
-	##seealso<< \code{\link{RespChamberProc}}
-	
-	timesSec <- as.numeric(times) - as.numeric(times[1])
-	#plot( conc ~ timesSec )
-	c0 <- quantile( tail(conc, max(10,length(conc)%/%5) ), probs=0.4)
-	#abline(h=c0)
-	plot( conc-c0 ~ timesSec )
-	lm1 <- lm(head(conc,30)-c0 ~ head(timesSec,30) )
-	# initial slope in Michaelis menten is f=-r/m, substitute r = -m*f
-	# r is the range to cover (intercept from the linear model)
-	f0 <- coefficients(lm1)[2]
-	m0 <- -coefficients(lm1)[1] / f0
-	nlm1 <- nls( conc ~ c + -m*f * (1- timesSec/(m+timesSec)) 
-			,start = list(f=f0, m = m0, c = c0)
-	)
-	#lines( I(c0 + -m0*f0*(1-timesSec/(m0+timesSec))) ~ timesSec, col="maroon"  ) 
-	#lines( fitted(nlm1) ~ timesSec, col="blue"  ) 
-	#plot(resid(nlm1) ~ timesSec )
-	#qqnorm( resid(nlm1) ); abline(0,1)
-	res <- c(
-			flux = coefficients(nlm1)[1]
-			,sdFlux = sqrt(vcov(nlm1)[1,1])
-			, AIC = AIC(nlm1)
-	)
-	attr(res,"model") <- nlm1
-	res
-	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
-}
-attr(regressFluxMenten,"ex") <- function(){
-	data(chamberLoggerEx1s)
-	ds <- chamberLoggerEx1s
-	conc <- ds$CO2_dry <- corrConcDilution(ds)  
-	times <- ds$TIMESTAMP
-	regressFluxMenten( conc, times  )
-	plot( conc ~ times)
-	#lines( fitted(lm1) ~ times )
-}
 
 regressFluxTanh <- function(
 		### Estimate the initial flux by fitting a hyperbolic tangent saturating function
 		conc	  ##<< numeric vector of CO2 concentrations []
 		,times	  ##<< times of conc measurements	[seconds]
-		,cSatFac=2  ##<< Position of the initial saturation (0 start, 1 end, >1 outside measured range)
-		,corAR1=TRUE	##<< try to account for autocorrelation
 		,start=c()	##<< numeric vector of starting parameters. May provide from last bootstrap to speed up fitting  
+		,cSatFac=2  ##<< Position of the initial saturation (0 start, 1 end, >1 outside measured range)
+		,tryAutoCorr=TRUE	##<< set to FALSE to not try to fit model with autocorrelation
 ){
 	##seealso<< \code{\link{regressFluxSquare}}
 	##seealso<< \code{\link{RespChamberProc}}
@@ -342,24 +374,27 @@ regressFluxTanh <- function(
 	#plot( conc ~ timesSec )
 	#lines( (tanh(timesSec*-s0/c00)+1)*c00 -cSat0)  # initial in concP range
 	#lines( (tanh(timesSec*-coefficients(nlm1)[1]/coefficients(nlm1)[3])+1)*coefficients(nlm1)[3] - coefficients(nlm1)[2])  # initial in concP range
-	nlm1 <- try( 
-			# deprecated use nlsLM from minpack.lm to switch between Newten and Levenberg, avoid singular gradient in near-linear cases
-			# http://www.r-bloggers.com/a-better-nls/
-			nlm1 <- if( fluxLin < 0 ){
-					gc1 <- gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
-						,start = if(length(start)) start else list(s=s0, cSat = cSat0, c0 = c00)
-						,params= c(s+cSat+c0~1)
-						,correlation=corAR1( 0.3, form = ~ timesSec)
-					)
-				} else {
-					# increasing concentrations
-					gc1 <-gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
-						,start = if(length(start)) start else list(s=-s0, cSat = cSat0, c0 = c00)
-						,params= c(s+cSat+c0~1)
-						,correlation=corAR1( 0.3, form = ~ timesSec)
-					)
-				}
-	,silent=TRUE)
+	# deprecated: use nlsLM from minpack.lm to switch between Newten and Levenberg, avoid singular gradient in near-linear cases
+	# http://www.r-bloggers.com/a-better-nls/
+	nlm1 <- try(
+			if( fluxLin < 0 ){
+				gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
+					,start = if(length(start)) start else list(s=s0, cSat = cSat0, c0 = c00)
+					,params= c(s+cSat+c0~1)
+					,correlation=NULL
+				)
+			} else {
+				# increasing concentrations
+				gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
+					,start = if(length(start)) start else list(s=-s0, cSat = cSat0, c0 = c00)
+					,params= c(s+cSat+c0~1)
+					,correlation=NULL
+				)
+			}
+	, silent=TRUE)
+	nlm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(nlm1,"try-error") ) nlm1 else try(
+						update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec) )
+						, silent=TRUE)
 	# lines(fitted(nlm1) ~ timesSec, col="orange" )
 	#
 	#lines( I(cSat0 + c00*(1-tanh(timesSec*(-s0)))) ~ timesSec, col="maroon"  ) 
@@ -371,13 +406,17 @@ regressFluxTanh <- function(
 				,sdFlux = NA
 				, AIC = NA
 				,autoCorr =  NA 
-	) else c(
-				flux = coefficients(nlm1)[1]
-				,sdFlux = sqrt(vcov(nlm1)[1,1])
-				, AIC = AIC(nlm1)
-				,autoCorr =  as.numeric(nlme:::coef.corAR1(nlm1$modelStruct$corStruct, unconstrained=FALSE)) 
-		)		
-	attr(res,"model") <- nlm1
+	) else {
+		nlmBest <- if( !inherits(nlm1Auto,"try-error") && (AIC(nlm1Auto) < AIC(nlm1)) ) nlm1Auto else nlm1
+		corStruct <- nlmBest$modelStruct$corStruct
+		c(
+				flux = coefficients(nlmBest)[1]
+				,sdFlux = sqrt(vcov(nlmBest)[1,1])
+				, AIC = AIC(nlmBest)
+				,autoCorr =  if( length(corStruct) ) as.numeric(nlme:::coef.corAR1(corStruct, unconstrained=FALSE)) else NA 
+		)
+	}
+	attr(res,"model") <- nlmBest
 	res
 	### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
 }
@@ -387,7 +426,8 @@ attr(regressFluxTanh,"ex") <- function(){
 	conc <- ds$CO2_dry <- corrConcDilution(ds)  
 	times <- ds$TIMESTAMP
 	times0 <- as.numeric(times) - as.numeric(times[1])
-	regressFluxTanh( conc, times  )
+	#trace(regressFluxTanh, recover)	#untrace(regressFluxTanh)
+	(regressFluxTanh( conc, times  ))
 	plot( conc ~ times0)
 	#lines( fitted(lm1) ~ times )
 	
@@ -397,33 +437,7 @@ attr(regressFluxTanh,"ex") <- function(){
 
 
 
-regressFluxLinear <- function(
-  ### Estimate the initial flux by polynomial regression
-  conc	  ##<< numeric vector of CO2 concentrations []
-  ,times	##<< times of conc measurements	[seconds]
-){
-	##seealso<< \code{\link{regressFluxSquare}}
-	##seealso<< \code{\link{RespChamberProc}}
-	
-  timesSec <- as.numeric(times) - as.numeric(times[1])
-  lm1 <- lm( conc ~ timesSec )
-  res <- c(
-    flux = as.vector(coefficients(lm1)[2])
-    ,sdFlux = summary(lm1)$coefficients[2,2]
-	,AIC=AIC(lm1)
-  )
-  attr(res,"model") <- lm1
-  res
-  ### numeric vector (2): estimate and its standard deviation of the initial flux [ppm / s]
-}
-attr(regressFluxLinear,"ex") <- function(){
-  data(chamberLoggerEx1s)
-  ds <- chamberLoggerEx1s
-  conc <- ds$CO2_Avg
-  times <- ds$TIMESTAMP
-  plot( conc ~ times )
-  regressFluxLinear( conc, times  )
-}
+
 
 
 sigmaBootLeverage <- function(
@@ -434,6 +448,7 @@ sigmaBootLeverage <- function(
 		,probs=c(0.05,0.5,0.95)			##<< percentiles for which the flux quantiels shoudl be returned
 		,nSample=80
 		,coefStart=c()	##<< numeric vector of starting parameters. May provide from last bootstrap to speed up fitting  
+		,tryAutoCorr=TRUE	##<< set to FALSE to not try to fit model with autocorrelation
 ){
 	##seealso<< \code{\link{RespChamberProc}}
 	
@@ -448,7 +463,7 @@ sigmaBootLeverage <- function(
   closes <-  sample(close, nSample, replace = TRUE)
   zz <- sapply(1:nSample, function(i){
     subIndices <- starts[i]:closes[i]
-    fRegress( conc[subIndices], times[subIndices], start=coefStart )[1]
+    fRegress( conc[subIndices], times[subIndices], start=coefStart, tryAutoCorr=tryAutoCorr  )[1]
   })
   #plot(density(zz, na.rm=TRUE))
   ## a vector with first entry the standard deviation of the flux, and following entries quantiles for given argument \code{probs}

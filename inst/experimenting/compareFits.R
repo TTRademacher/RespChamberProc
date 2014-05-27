@@ -24,6 +24,9 @@ ds <- subset(dss, series==15)		# saturating production
 res <- calcClosedChamberFlux(ds )
 # plot( CO2~time, ds )
 
+ds <- subset(dss, series==3)		# saturating production
+
+
 library(plyr)
 resFluxesL <- dlply( dss, .(series), function(ds){
 			cat(ds$series[1],",")
@@ -44,6 +47,7 @@ resFluxesL <- dlply( dss, .(series), function(ds){
 resFluxesTanh <- do.call(rbind, resFluxesL)
 
 resFluxesL <- dlply( dss, .(series), function(ds){
+			cat(ds$series[1],",")
 			resi <- calcClosedChamberFlux(ds, fRegress=c(regressFluxSquare))
 			c( series = ds$series[1], resi )
 		})
@@ -57,20 +61,21 @@ resFluxesL <- dlply( dss, .(series), function(ds){
 		})
 resFluxesExp <- do.call(rbind, resFluxesL)
 
+.tmp.f <- function(){
+	resFluxesL <- dlply( dss, .(series), function(ds){
+				resi <- calcClosedChamberFlux(ds)
+				c( series = ds$series[1], resi )
+			})
+	resFluxesAIC <- do.call(rbind, resFluxesL)
+}
 
-resFluxesL <- dlply( dss, .(series), function(ds){
-			resi <- calcClosedChamberFlux(ds)
-			c( series = ds$series[1], resi )
-		})
-resFluxesAIC <- do.call(rbind, resFluxesL)
+AIC <- cbind(resFluxesLin[,"AIC"], resFluxesPoly[,"AIC"], resFluxesExp[,"AIC"], resFluxesTanh[,"AIC"] )
+apply( AIC, 1, which.min )
 
 
 
 (resFluxesPoly - resFluxesTanh ) / resFluxesTanh
 (resFluxesExp - resFluxesTanh ) / resFluxesTanh
-(resFluxesPoly - resFluxesAIC ) / resFluxesAIC 
-(resFluxesTanh - resFluxesAIC ) / resFluxesAIC 
-(resFluxesExp - resFluxesAIC ) / resFluxesAIC 
 
 plot( abs(flux) ~ series, resFluxesAIC, pch="x" )
 points( abs(flux) ~ series, resFluxesLin, col="grey" )
@@ -84,9 +89,12 @@ ds <- subset(dss, series==13)		# differences between tanh and poly
 #ds <- subset(dss, series==16)		# differences between tanh and poly
 ds <- subset(dss, series==23)		# differences between tanh and poly
 
+ds <- subset(dss, series==15)		# differences between tanh and exp
+ds <- subset(dss, series==17)		# differences between tanh and exp # but strange points after lag-time
 ds <- subset(dss, series==21)		# differences between tanh and exp
-ds <- subset(dss, series==17)		# differences between tanh and exp
-ds <- subset(dss, series==2)		# differences between tanh and exp
+
+ds <- subset(dss, series==6)		# tanh fitted but not exp
+
 #trace(calcClosedChamberFlux, recover )	#untrace(calcClosedChamberFlux)
 #trace(regressFluxExp, recover )	#untrace(regressFluxExp)
 rExp <- calcClosedChamberFlux(ds, fRegress=c(regressFluxExp)); mExp <- attr(rExp,"model")
@@ -94,15 +102,20 @@ rExp <- calcClosedChamberFlux(ds, fRegress=c(regressFluxExp)); mExp <- attr(rExp
 rTanh <- calcClosedChamberFlux(ds, fRegress=c(regressFluxTanh)); mTanh <- attr(rTanh,"model")
 rLin <- calcClosedChamberFlux(ds, fRegress=c(regressFluxLinear)); mLin <- attr(rLin,"model")
 rPoly <- calcClosedChamberFlux(ds, fRegress=c(regressFluxSquare)); mPoly <- attr(rPoly,"model")
-rAIC <- calcClosedChamberFlux(ds ); mAIC <- attr(rAIC,"model")
-rbind(rAIC, rLin, rExp, rTanh, rPoly)
+#rAIC <- calcClosedChamberFlux(ds ); mAIC <- attr(rAIC,"model")
+rbind(rLin, rExp, rTanh, rPoly)
+qqnorm(resid(mTanh, type="normalized")); abline(0,1)
+qqnorm(resid(mExp, type="normalized")); abline(0,1)
+qqnorm(resid(mPoly, type="pearson")); abline(0,1)
+qqnorm(resid(mLin, type="pearson")); abline(0,1)
 plot( CO2_dry ~ time, ds)
 points( CO2_dry ~ time, ds[ds$time <= rExp["tLag"], ], col="lightgrey")
 points( CO2_dry ~ time, ds[ds$time > 5*rExp["tLag"], ], col="lightgrey")
 abline(v=rExp["tLag"])
 lines(fitted(mExp) ~ I(ds$time[ds$time > rExp["tLag"] ]))
 lines(fitted(mTanh) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="blue")
-lines(fitted(mAIC) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="maroon")
+#lines(fitted(mAIC) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="maroon")
+lines(fitted(mPoly) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="green")
 
 plot( resid(mTanh) ~ I(ds$time[ds$time > rExp["tLag"] ]))
 points( resid(mExp) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="blue")
