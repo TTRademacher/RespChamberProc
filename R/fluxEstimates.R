@@ -6,7 +6,8 @@ calcClosedChamberFlux <- function(
 	,colTime="TIMESTAMP"	##<< column name of time [s]
 	,colTemp="TA_Avg"       ##<< column name of air temperature inside chamber [°C]
     ,colPressure="Pa"       ##<< column name of air pressure inside chamber [Pa]
-	,fRegress = c(lin=regressFluxLinear, tanh=regressFluxTanh, exp=regressFluxExp)	##<< list of functions to yield a single flux estimate, see details  
+	,fRegress = c(exp=regressFluxExp, lin=regressFluxLinear, tanh=regressFluxTanh)	##<< list of functions to yield a single flux estimate, see details
+	,fRegressSelect = regressSelectPref1	 ##<< function to select the regression function based on fitting results. Signature and return must correspond to \code{\link{regressSelectPref1}} 
   	,volume=1               ##<< volume inside the chamber im [m3]
 	,isEstimateLeverage	= TRUE	##<< set to FALSE to omit the time consuming bootstrap for uncertainty due to leverage
     ,isStopOnError = TRUE   ##<< set to FALSE to not stop execution on errors, but report NAs
@@ -39,7 +40,7 @@ calcClosedChamberFlux <- function(
     fluxEstL <- lapply( fRegress, function(fReg){	
     	fluxEst <- fReg( conc ,  times)
     })
-    iBest <- which.min( do.call(rbind,fluxEstL)[,3] )
+	iBest <- fRegressSelect(fluxEstL)
 	if( !length(iBest) ){
 		warning("calcClosedChamberFlux: could not fit any of the specified functions to the concentration dataset")
 		res <- ( structure(rep(NA, 10), names=c("flux", "fluxMedian", "sdFlux", "tLag", "lagIndex", "autoCorr"
@@ -125,6 +126,24 @@ attr(calcClosedChamberFlux,"ex") <- function(){
 	
 }
 
+regressSelectAIC <- function(
+	### select regression function based on minimum AIC of the fits	
+	fluxEstL 	##<< list of return values of different regression functions such as \code{\link{regressFluxLinear}}
+){
+	##value<< index of the best regression function
+	iBest <- which.min( do.call(rbind,fluxEstL)[,"AIC"] )	# the AIC returned
+}
+
+regressSelectPref1 <- function(
+		### select prefer first regression function, if its AIC is not significantly different from next best 	
+		fluxEstL 	##<< list of return values of different regression functions such as \code{\link{regressFluxLinear}}
+){
+	##value<< index of the best regression function
+	if( length(fluxEstL) == 1 ) return(1)
+	AICs <- do.call(rbind,fluxEstL)[,"AIC"] 		# the AIC returned
+	iBestOthers <- which.min( AICs[-1] )+1	 
+	iBest <- if( is.finite(AICs[1]) && (AICs[1] <= AICs[iBestOthers]+1.92) ) 1 else iBestOthers
+}
 
 
 selectDataAfterLag <- function(

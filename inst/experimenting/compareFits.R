@@ -63,19 +63,21 @@ resFluxesExp <- do.call(rbind, resFluxesL)
 
 .tmp.f <- function(){
 	resFluxesL <- dlply( dss, .(series), function(ds){
+				cat(ds$series[1],",")
 				resi <- calcClosedChamberFlux(ds)
 				c( series = ds$series[1], resi )
 			})
 	resFluxesAIC <- do.call(rbind, resFluxesL)
 }
 
-AIC <- cbind(resFluxesLin[,"AIC"], resFluxesPoly[,"AIC"], resFluxesExp[,"AIC"], resFluxesTanh[,"AIC"] )
-apply( AIC, 1, which.min )
+AICs <- cbind(resFluxesLin[,"AIC"], resFluxesPoly[,"AIC"], resFluxesExp[,"AIC"], resFluxesTanh[,"AIC"] )
+apply( AICs, 1, which.min )
 
 
 
 (resFluxesPoly - resFluxesTanh ) / resFluxesTanh
-(resFluxesExp - resFluxesTanh ) / resFluxesTanh
+(resFluxesTanh -resFluxesExp) / resFluxesExp		# AIC essentially equal, only use tanh if exp was not fitted
+(resFluxesTanh -resFluxesExp)
 
 plot( abs(flux) ~ series, resFluxesAIC, pch="x" )
 points( abs(flux) ~ series, resFluxesLin, col="grey" )
@@ -89,11 +91,16 @@ ds <- subset(dss, series==13)		# differences between tanh and poly
 #ds <- subset(dss, series==16)		# differences between tanh and poly
 ds <- subset(dss, series==23)		# differences between tanh and poly
 
-ds <- subset(dss, series==15)		# differences between tanh and exp
 ds <- subset(dss, series==17)		# differences between tanh and exp # but strange points after lag-time
-ds <- subset(dss, series==21)		# differences between tanh and exp
+ds <- subset(dss, series==21)		# differences between tanh and exp -> exp AIC actually better 
 
-ds <- subset(dss, series==6)		# tanh fitted but not exp
+ds <- subset(dss, series==6)		# tanh fitted but not exp -> nearly linear only slight underestimation by linear model
+
+ds <- subset(dss, series==17)		# differences between tanh and exp -> AIC significantly worse, but pattern better than tanh
+ds <- subset(dss, series==24)		# differences between tanh and exp -> almost linear, same flux estimate between tanh and exp
+
+ds <- subset(dss, series==15)		# differences between tanh and exp -> almost no difference in estimate tanh and exp
+
 
 #trace(calcClosedChamberFlux, recover )	#untrace(calcClosedChamberFlux)
 #trace(regressFluxExp, recover )	#untrace(regressFluxExp)
@@ -102,6 +109,7 @@ rExp <- calcClosedChamberFlux(ds, fRegress=c(regressFluxExp)); mExp <- attr(rExp
 rTanh <- calcClosedChamberFlux(ds, fRegress=c(regressFluxTanh)); mTanh <- attr(rTanh,"model")
 rLin <- calcClosedChamberFlux(ds, fRegress=c(regressFluxLinear)); mLin <- attr(rLin,"model")
 rPoly <- calcClosedChamberFlux(ds, fRegress=c(regressFluxSquare)); mPoly <- attr(rPoly,"model")
+#trace(regressSelectPref1, recover)	#untrace(regressSelectPref1)
 #rAIC <- calcClosedChamberFlux(ds ); mAIC <- attr(rAIC,"model")
 rbind(rLin, rExp, rTanh, rPoly)
 qqnorm(resid(mTanh, type="normalized")); abline(0,1)
