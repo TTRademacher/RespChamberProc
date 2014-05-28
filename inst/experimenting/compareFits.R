@@ -101,6 +101,8 @@ ds <- subset(dss, series==24)		# differences between tanh and exp -> almost line
 
 ds <- subset(dss, series==15)		# differences between tanh and exp -> almost no difference in estimate tanh and exp
 
+ds <- subset(dss, series==23)		# autocorrelation? indeed
+
 
 #trace(calcClosedChamberFlux, recover )	#untrace(calcClosedChamberFlux)
 #trace(regressFluxExp, recover )	#untrace(regressFluxExp)
@@ -120,10 +122,11 @@ plot( CO2_dry ~ time, ds)
 points( CO2_dry ~ time, ds[ds$time <= rExp["tLag"], ], col="lightgrey")
 points( CO2_dry ~ time, ds[ds$time > 5*rExp["tLag"], ], col="lightgrey")
 abline(v=rExp["tLag"])
-lines(fitted(mExp) ~ I(ds$time[ds$time > rExp["tLag"] ]))
+lines(fitted(mExp) ~ I(ds$time[rExp["lagIndex"]:ds$time > rExp["tLag"] ]))
 lines(fitted(mTanh) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="blue")
 #lines(fitted(mAIC) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="maroon")
 lines(fitted(mPoly) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="green")
+lines(fitted(mLin) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="darkgrey")
 
 plot( resid(mTanh) ~ I(ds$time[ds$time > rExp["tLag"] ]))
 points( resid(mExp) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="blue")

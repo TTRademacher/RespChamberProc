@@ -139,7 +139,8 @@ regressSelectPref1 <- function(
 		fluxEstL 	##<< list of return values of different regression functions such as \code{\link{regressFluxLinear}}
 ){
 	##value<< index of the best regression function
-	if( length(fluxEstL) == 1 ) return(1)
+	if( length(fluxEstL) == 1 ) 
+		return( if( is.finite(fluxEstL[[1]]["AIC"])) 1 else integer(0) )
 	AICs <- do.call(rbind,fluxEstL)[,"AIC"] 		# the AIC returned
 	iBestOthers <- which.min( AICs[-1] )+1	 
 	iBest <- if( is.finite(AICs[1]) && (AICs[1] <= AICs[iBestOthers]+1.92) ) 1 else iBestOthers
@@ -325,13 +326,13 @@ regressFluxExp <- function(
 	#lines( fitted(nlm1) ~ timesSec, col="orange"  ) 
 	#plot(resid(nlm1) ~ timesSec )
 	#qqnorm( resid(nlm1) ); abline(0,1)
+	nlmBest <- if( !inherits(nlm1Auto,"try-error") && (AIC(nlm1Auto) < AIC(nlm1)) ) nlm1Auto else nlm1
 	res <- if( inherits(nlm1,"try-error") ) c(
 				flux = NA
 				,sdFlux = NA
 				, AIC = NA
 				,autoCorr =  NA 
 		) else {
-		    nlmBest <- if( !inherits(nlm1Auto,"try-error") && (AIC(nlm1Auto) < AIC(nlm1)) ) nlm1Auto else nlm1
 			corStruct <- nlmBest$modelStruct$corStruct
 			c(
 			flux = coefficients(nlmBest)[1]
@@ -420,13 +421,13 @@ regressFluxTanh <- function(
 	#lines( fitted(nlm1) ~ timesSec, col="purple"  )
 	#plot(resid(nlm1) ~ timesSec )
 	#qqnorm( resid(nlm1) ); abline(0,1)
+	nlmBest <- if( !inherits(nlm1Auto,"try-error") && (AIC(nlm1Auto) < AIC(nlm1)) ) nlm1Auto else nlm1
 	res <- if( inherits(nlm1,"try-error") ) c(
 				flux = NA
 				,sdFlux = NA
 				, AIC = NA
 				,autoCorr =  NA 
 	) else {
-		nlmBest <- if( !inherits(nlm1Auto,"try-error") && (AIC(nlm1Auto) < AIC(nlm1)) ) nlm1Auto else nlm1
 		corStruct <- nlmBest$modelStruct$corStruct
 		c(
 				flux = coefficients(nlmBest)[1]
