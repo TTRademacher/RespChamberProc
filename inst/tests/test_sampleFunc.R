@@ -1,6 +1,7 @@
 #require(testthat)
 context("fSampleFunc")
 
+.tmp.f <- function(){
 test_that("two vectors are added correctly",{
 		a = 1:10
 		b = 1
@@ -8,4 +9,4 @@ test_that("two vectors are added correctly",{
 		expect_that( fSampleFunc(a,b), equals(c) )
 		expect_that( fSampleFunc(a), throws_error() )
 	})
-
+}

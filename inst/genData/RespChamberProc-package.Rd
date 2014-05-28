@@ -23,7 +23,7 @@ A second set of functions estimates the flux and its uncertainty from the concen
 \itemize{
 \item{ Aggregating estimates: \code{\link{calcClosedChamberFlux}}  }
 \item{ Select the subset of data after lagTime: \code{\link{selectDataAfterLag}}  }
-\item{ Estimate the initial flux by polynomial regression: \code{\link{regressFluxSquare}}  }
+\item{ Estimate the initial flux by polynomial regression: \code{\link{regressFluxExp}}  }
 \item{  Estimate uncertainty of regrssion due to leverage of starting and end points: \code{\link{sigmaBootLeverage}}  }
 }%itemize
 

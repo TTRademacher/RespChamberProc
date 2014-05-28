@@ -33,7 +33,7 @@ resFluxesL <- dlply( dss, .(series), function(ds){
 			#trace(calcClosedChamberFlux, recover )	#untrace(calcClosedChamberFlux)
 			#trace(regressFluxTanh, recover )	#untrace(regressFluxTanh)
 			resi <- calcClosedChamberFlux(ds, fRegress=c(regressFluxLinear))
-			c( series = ds$series[1], resi )
+			c( series = ds$series[1], resi$stat )
 		})
 resFluxesLin <- do.call(rbind, resFluxesL)
 
@@ -42,14 +42,14 @@ resFluxesL <- dlply( dss, .(series), function(ds){
 			#trace(calcClosedChamberFlux, recover )	#untrace(calcClosedChamberFlux)
 			#trace(regressFluxTanh, recover )	#untrace(regressFluxTanh)
 			resi <- calcClosedChamberFlux(ds, fRegress=c(regressFluxTanh))
-			c( series = ds$series[1], resi )
+			c( series = ds$series[1], resi$stat )
 		})
 resFluxesTanh <- do.call(rbind, resFluxesL)
 
 resFluxesL <- dlply( dss, .(series), function(ds){
 			cat(ds$series[1],",")
 			resi <- calcClosedChamberFlux(ds, fRegress=c(regressFluxSquare))
-			c( series = ds$series[1], resi )
+			c( series = ds$series[1], resi$stat )
 		})
 resFluxesPoly <- do.call(rbind, resFluxesL)
 
@@ -57,17 +57,27 @@ resFluxesL <- dlply( dss, .(series), function(ds){
 			cat(ds$series[1],",")
 			#trace(regressFluxExp, recover )	#untrace(regressFluxExp)
 			resi <- calcClosedChamberFlux(ds, fRegress=c(regressFluxExp))
-			c( series = ds$series[1], resi )
+			c( series = ds$series[1], resi$stat )
 		})
 resFluxesExp <- do.call(rbind, resFluxesL)
 
 .tmp.f <- function(){
 	resFluxesL <- dlply( dss, .(series), function(ds){
 				cat(ds$series[1],",")
-				resi <- calcClosedChamberFlux(ds)
-				c( series = ds$series[1], resi )
+				resi <- calcClosedChamberFlux(ds, fRegress=c(regressFluxExp, regressFluxLinear,regressFluxSquare,regressFluxTanh))
+				c( series = ds$series[1], resi$stat )
 			})
 	resFluxesAIC <- do.call(rbind, resFluxesL)
+	
+	resFluxesL <- dlply( dss, .(series), function(ds){
+				cat(ds$series[1],",")
+				resi <- calcClosedChamberFlux(ds
+					, fRegress=c(regressFluxExp, regressFluxLinear,regressFluxTanh,regressFluxSquare)
+					, fRegressSelect = regressSelectAIC
+			)
+				c( series = ds$series[1], resi$stat )
+			})
+	resFluxesAIC2 <- do.call(rbind, resFluxesL)
 }
 
 AICs <- cbind(resFluxesLin[,"AIC"], resFluxesPoly[,"AIC"], resFluxesExp[,"AIC"], resFluxesTanh[,"AIC"] )
@@ -103,46 +113,56 @@ ds <- subset(dss, series==15)		# differences between tanh and exp -> almost no d
 
 ds <- subset(dss, series==23)		# autocorrelation? indeed
 
+ds <- subset(dss, series==2)		# linear?  case where poly goes wrong (concave)
+ds <- subset(dss, series==5)		# linear?  case where poly goes wrong (concave)
+
+# check poly best: none
+# iPoly <- which(resFluxesAIC[,"iFRegress"]==4)
+# iPoly <- which(resFluxesAIC2[,"iFRegress"]==4)
 
 #trace(calcClosedChamberFlux, recover )	#untrace(calcClosedChamberFlux)
 #trace(regressFluxExp, recover )	#untrace(regressFluxExp)
-rExp <- calcClosedChamberFlux(ds, fRegress=c(regressFluxExp)); mExp <- attr(rExp,"model")
+rExp <- calcClosedChamberFlux(ds, fRegress=c(regressFluxExp))
+#rExp <- calcClosedChamberFlux(ds, fRegress=c(regressFluxExp), isStopOnError=TRUE)
 #trace(regressFluxTanh, recover )	#untrace(regressFluxTanh)
-rTanh <- calcClosedChamberFlux(ds, fRegress=c(regressFluxTanh)); mTanh <- attr(rTanh,"model")
-rLin <- calcClosedChamberFlux(ds, fRegress=c(regressFluxLinear)); mLin <- attr(rLin,"model")
-rPoly <- calcClosedChamberFlux(ds, fRegress=c(regressFluxSquare)); mPoly <- attr(rPoly,"model")
+rTanh <- calcClosedChamberFlux(ds, fRegress=c(regressFluxTanh))
+rLin <- calcClosedChamberFlux(ds, fRegress=c(regressFluxLinear))
+rPoly <- calcClosedChamberFlux(ds, fRegress=c(regressFluxSquare))
 #trace(regressSelectPref1, recover)	#untrace(regressSelectPref1)
 #rAIC <- calcClosedChamberFlux(ds ); mAIC <- attr(rAIC,"model")
-rbind(rLin, rExp, rTanh, rPoly)
-qqnorm(resid(mTanh, type="normalized")); abline(0,1)
-qqnorm(resid(mExp, type="normalized")); abline(0,1)
-qqnorm(resid(mPoly, type="pearson")); abline(0,1)
-qqnorm(resid(mLin, type="pearson")); abline(0,1)
+#rAIC <- calcClosedChamberFlux(ds, fRegress=c(regressFluxExp, regressFluxLinear,regressFluxSquare,regressFluxTanh) )
+
+do.call( rbind, lapply(list(exp=rExp, lin=rLin, tanh=rTanh, poly=rPoly),"[[","stat" ) )
+.tmp.f <- function(){
+	qqnorm(resid(rTanh$model, type="normalized")); abline(0,1)
+	qqnorm(resid(rExp$model, type="normalized")); abline(0,1)
+	qqnorm(resid(rPoly$model, type="pearson")); abline(0,1)
+	qqnorm(resid(rLin$model, type="pearson")); abline(0,1)
+}
 plot( CO2_dry ~ time, ds)
-points( CO2_dry ~ time, ds[ds$time <= rExp["tLag"], ], col="lightgrey")
-points( CO2_dry ~ time, ds[ds$time > 5*rExp["tLag"], ], col="lightgrey")
-abline(v=rExp["tLag"])
-lines(fitted(mExp) ~ I(ds$time[rExp["lagIndex"]:ds$time > rExp["tLag"] ]))
-lines(fitted(mTanh) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="blue")
-#lines(fitted(mAIC) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="maroon")
-lines(fitted(mPoly) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="green")
-lines(fitted(mLin) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="darkgrey")
+tLag <- rLin$stat["tLag"]
+points( CO2_dry ~ time, ds[ds$time <= tLag, ], col="lightgrey")
+points( CO2_dry ~ time, ds[ds$time > 5*tLag, ], col="lightgrey")
+abline(v=tLag)
+lines(fitted(rExp$model) ~ I(ds$time[ds$time > tLag ]))
+lines(fitted(rTanh$model) ~ I(ds$time[ds$time > tLag ]), col="blue")
+#lines(fitted(rAIC$model) ~ I(ds$time[ds$time > tLag ]), col="maroon")
+lines(fitted(rPoly$model) ~ I(ds$time[ds$time > tLag ]), col="green")
+lines(fitted(rLin$model) ~ I(ds$time[ds$time > tLag ]), col="darkgrey")
 
-plot( resid(mTanh) ~ I(ds$time[ds$time > rExp["tLag"] ]))
-points( resid(mExp) ~ I(ds$time[ds$time > rExp["tLag"] ]), col="blue")
-qqnorm(resid(mTanh)); abline(0,1)
+plot( resid(rTanh$model) ~ I(ds$time[ds$time > tLag ]))
+points( resid(rExp$model) ~ I(ds$time[ds$time > tLag ]), col="blue")
+qqnorm(resid(rTanh$model)); abline(0,1)
 
+# plot normality
 windows()
-qqnorm(resid(mExp)); abline(0,1)
-qqline( resid(mExp), distribution=function(p){ qexp(p)}, col="blue" )
-plot(density(resid(mExp)))
-x <- seq(-1.5,1.5,length.out=30); 
-lines( dnorm( x, sd=sd(resid(mExp)) ) ~ x, col="red")
-lines( dexp( x ) ~ x, col="red")
-lines(density(resid(mTanh)), col="blue")
+qqnorm(resid(rLin$model, type="normalized")); abline(0,1)
+plot(density(resid(rLin$model, type="normalized")))
+x <- seq(-3,3,length.out=30); 
+lines( dnorm( x, sd=sd(resid(rLin$model, type="normalized")) ) ~ x, col="red")
 
-acf(resid(mTanh))
-acf(resid(mExp))
+# check autocorrelation
+acf(resid(rTanh$model))
+acf(resid(rExp$model))
+acf(resid(rLin$model))
 
-
-ds <- subset(dss, series==17)		# large difference between methods
