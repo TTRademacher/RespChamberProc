@@ -299,27 +299,19 @@ regressFluxExp <- function(
 		#plot( I(concP-cSat0) ~ timesSec )
 		cDiff <- concP-cSat0; cDiff[cDiff <= 0] <- NA
 		lm1 <- suppressWarnings( lm( log(cDiff) ~ timesSec ) )
-		#plot( log(conc-cSat0) ~ timesSec )
+		#plot( log(concP-cSat0) ~ timesSec )
 		a0 <- exp(coefficients(lm1)[1])
 		b0 <- -coefficients(lm1)[2]
-		r0 <- a0/-b0
+		r0 <- a0*-b0
+		#plot( conc ~ timesSec )
 	}
 	nlm1 <- try(
-		if( fluxLin < 0 ){
-			gnls( conc ~ r/-b * exp(-b*timesSec) + c
+			gnls( conc ~ -r/b * exp(-b*timesSec) + c
 					,params=r+b+c~1
-					,start = if( length(start) ) start else list(r = r0, b =b0, c=cSat0)
+					,start = if( length(start) ) start else if( fluxLin < 0 )  list(r = r0, b =b0, c=cSat0) else list(r = -r0, b =b0, c=-cSat0) 
 					#,control=gls.control(tol = 1e-03, minFactor=1/1024/4)
 					,correlation=NULL
 			)
-		} else {
-				gnls( conc ~ r/b * exp(b*timesSec) - c		# concB -> -conc; b->-b; r->-r
-							,params=r+b+c~1
-							,start = if( length(start) ) start else list(r = -r0, b =-b0, c=cSat0)
-							#,control=gnls.control(tol = 1e-03, minFactor=1/1024/4)
-							,correlation=NULL
-					)
-		}
 	, silent=TRUE)
 	nlm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(nlm1,"try-error")) nlm1 else try(
 						update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec) )

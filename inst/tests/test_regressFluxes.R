@@ -55,6 +55,11 @@ test_that("regressFlux good data increasing",{
 			expect_equal( as.numeric(res$stat["flux"]), expFlux, tolerance =0.5)
 			expect_equal( as.numeric(res$stat["flux"]), expSdFlux, tolerance =0.5)
 			expect_true( is.na(res$stat["autoCorr"]) )
+			#
+			.tmp.f <- function(){
+				plot( concP ~ times )
+				lines( fitted(res$model) ~ times)
+			}
 		})
 
 
