@@ -4,7 +4,7 @@ calcClosedChamberFlux <- function(
 	ds						##<< data.frame with concentration and time column of a chamber measurement of one replicate
 	,colConc="CO2_dry"		##<< column name of CO2 concentration [ppm]
 	,colTime="TIMESTAMP"	##<< column name of time [s]
-	,colTemp="TA_Avg"       ##<< column name of air temperature inside chamber [°C]
+	,colTemp="TA_Avg"       ##<< column name of air temperature inside chamber [degC]
     ,colPressure="Pa"       ##<< column name of air pressure inside chamber [Pa]
 	,fRegress = c(exp=regressFluxExp, lin=regressFluxLinear, tanh=regressFluxTanh)	##<< list of functions to yield a single flux estimate, see details
 	,fRegressSelect = regressSelectPref1	 ##<< function to select the regression function based on fitting results. Signature and return must correspond to \code{\link{regressSelectPref1}} 
@@ -67,7 +67,7 @@ calcClosedChamberFlux <- function(
     ## The second comes from the leverage of starting and end points of the regression (estimated by a bootstrap)
     ## return value sdFlux is the maximum of those two components
     #
-    #correct fluxes for density and express per chamber instead of per mol air
+    # correct fluxes for density and express per chamber instead of per mol air
     fluxEstTotal = corrFluxDensity(fluxEst, volume = volume
                     , temp = ds[ dslRes$lagIndex,colTemp ]
                     , pressure = ds[ dslRes$lagIndex,colPressure ])
@@ -78,8 +78,8 @@ calcClosedChamberFlux <- function(
     #corrFluxDensity( dsl, vol=2)
   	##value<< list with entries \code{stat}, and \code{model}.   
   	res <- list(
-		 stat= c(	##<< vector with the following entries:
-  		flux = as.numeric(fluxEstTotal[1])			    ##<< the estimate of the CO2 flux [mumol / s]
+		 stat= c(	##<< numeric vector with the following entries:
+  		flux = as.numeric(fluxEstTotal[1])			    ##<< the estimate of the CO2 flux into the chamber [mumol / s]
 		,fluxMedian = as.numeric(leverageEstTotal[3])	##<< the median of the flux bootsrap estimates [mumol / s] 
   		,sdFlux = max(fluxEstTotal["sdFlux"],leverageEstTotal["sd"], na.rm=TRUE)	##<< the standard deviation of the CO2 flux
   		,tLag = tLag		                            ##<< time of lag phase in seconds
@@ -96,32 +96,33 @@ attr(calcClosedChamberFlux,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
     ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
-	
 	conc <- ds$CO2_dry <- corrConcDilution(ds)
-    resLin <- calcClosedChamberFlux(ds, fRegress=list(regressFluxLinear))
-	resPoly <- calcClosedChamberFlux(ds, fRegress=list(regressFluxSquare))
-	resExp <- calcClosedChamberFlux(ds, fRegress=list(regressFluxExp) )
-	#trace(regressFluxTanh, recover)	#untrace(regressFluxTanh)
-	resTanh <- calcClosedChamberFlux(ds, fRegress=list(regressFluxTanh ))
-
-	times <- ds$TIMESTAMP
-	times0 <- as.numeric(times) - as.numeric(times[1])
-	times0Fit <- times0[times0>resLin$stat["tLag"] ]
-	plot( resid(resTanh$model, type="normalized") ~  times0Fit )
-	qqnorm(resid(resTanh$model, type="normalized")); abline(0,1)
+	resFit <- calcClosedChamberFlux(ds)
+	resFit$stat[c("flux","sdFlux")]
+	#plotResp(ds, resFit)
 	
-	#length(times0Fit)
-	plot( ds$CO2_dry ~ times0, xlab="time (s)", ylab="" ); mtext("CO2_dry (ppm)",2,2,las=0)
-	abline(v=resLin$stat["tLag"], col="grey", lty="dotted")
-	lines( fitted(resExp$model) ~ times0Fit , col="red" )
-	lines( fitted(resLin$model) ~ times0Fit , col="grey" )
-	lines( fitted(resTanh$model) ~ times0Fit , col="purple" )
-	lines( fitted(resPoly$model) ~ times0Fit , col="blue" )
-	legend("topright", inset=c(0.02,0.02), legend=c("exp","lin","tanh","poly"), col=c("red","grey","purple","blue"), lty="solid")
-	
-     res <- rbind(exp=resExp$stat, lin=resLin$stat,  tanh=resTanh$stat, poly=resPoly$stat)
-	 res
-	
+	.tmp.compareFittingFunctions <- function(){
+		resLin <- calcClosedChamberFlux(ds, fRegress=list(regressFluxLinear))
+		resPoly <- calcClosedChamberFlux(ds, fRegress=list(regressFluxSquare))
+		resExp <- calcClosedChamberFlux(ds, fRegress=list(regressFluxExp) )
+		#trace(regressFluxTanh, recover)	#untrace(regressFluxTanh)
+		resTanh <- calcClosedChamberFlux(ds, fRegress=list(regressFluxTanh ))
+		
+		times <- ds$TIMESTAMP
+		times0 <- as.numeric(times) - as.numeric(times[1])
+		times0Fit <- times0[times0>resLin$stat["tLag"] ]
+		plot( resid(resTanh$model, type="normalized") ~  times0Fit )	# residual plots
+		qqnorm(resid(resTanh$model, type="normalized")); abline(0,1)
+		
+		#length(times0Fit)
+		plot( ds$CO2_dry ~ times0, xlab="time (s)", ylab="" ); mtext("CO2_dry (ppm)",2,2,las=0)
+		abline(v=resLin$stat["tLag"], col="grey", lty="dotted")
+		lines( fitted(resExp$model) ~ times0Fit , col="red" )
+		lines( fitted(resLin$model) ~ times0Fit , col="grey" )
+		lines( fitted(resTanh$model) ~ times0Fit , col="purple" )
+		lines( fitted(resPoly$model) ~ times0Fit , col="blue" )
+		legend("topright", inset=c(0.02,0.02), legend=c("exp","lin","tanh","poly"), col=c("red","grey","purple","blue"), lty="solid")
+	}
 }
 
 regressSelectAIC <- function(
@@ -134,7 +135,7 @@ regressSelectAIC <- function(
 }
 
 regressSelectPref1 <- function(
-		### select prefer first regression function, if its AIC is not significantly different from next best 	
+		### prefer first regression function, if its AIC is not significantly different from next best 	
 		fluxEstL 	##<< list of return values of different regression functions such as \code{\link{regressFluxLinear}}
 ){
 	##value<< index of the best regression function
@@ -263,12 +264,12 @@ regressFluxExp <- function(
 	##seealso<< \code{\link{RespChamberProc}}
 
 	##details<< 
-	## The flux is calculated at the slop of the concnetration change. By
+	## The flux is calculated as the slope of the concentration change. By
 	## changing the concentration gradient, however, the flux is disturbed. In effect the 
-	## flux will decline over time and concentrations go towards a saturation.
+	## flux will decline over time and concentrations go towards a saturation. 
 	##
 	## This method fits a polynomial regression to the concentrations and infers the slope at reports
-	## the slope at the initial time.
+	## the slope at the initial time. Make sure to remove lag time period before.
 	##
 	## Other functional forms can be fitted to estimate the initial slope:
 	## \itemize{
@@ -281,6 +282,8 @@ regressFluxExp <- function(
 	## The hyperbolic tangent form (\code{\link{regressFluxTanh}}) has the advantage that 
 	## initially the flux is changing only very slowly. In contrast, whith the exponential form the
 	## slope changes much at the beginning.
+	##
+	## The exponential form, is more consistent with a theoretical model of saturating flux (Kutzbach 2006).
 	
 	timesSec <- as.numeric(times) - as.numeric(times[1])
 	#plot( conc ~ timesSec )
@@ -400,14 +403,14 @@ regressFluxTanh <- function(
 	# http://www.r-bloggers.com/a-better-nls/
 	nlm1 <- try(
 			if( fluxLin < 0 ){
-				gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
+				nlm1 <- gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
 					,start = if(length(start)) start else list(s=s0, cSat = cSat0, c0 = c00)
 					,params= c(s+cSat+c0~1)
 					,correlation=NULL
 				)
 			} else {
 				# increasing concentrations
-				gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
+				nlm1 <- gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
 					,start = if(length(start)) start else list(s=-s0, cSat = cSat0, c0 = c00)
 					,params= c(s+cSat+c0~1)
 					,correlation=NULL

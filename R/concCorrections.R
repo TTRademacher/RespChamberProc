@@ -24,9 +24,9 @@ attr(corrConcDilution,"ex") <- function(){
 
 corrFluxDensity <- function(
 	### Calculate total flux inside the chamber from flux per amount of air
-  CO2_molarFlux 					  ##<< numeric vector of rate of changes in CO2 dry molar fraction [ppm/sec]
+  	CO2_molarFlux 		##<< numeric vector of rate of changes in CO2 dry molar fraction [ppm/sec]
 	,volume=1			##<< numeric scalar: volume of the chamber in [m3]
-	,temp=20	     ##<< numeric vector: temperature inside chamber [°C]  
+	,temp=20	     	##<< numeric vector: temperature inside chamber [degC]  
 	,pressure=101325 	##<< numeric vector: pressure inside chamber [Pa]
 ){
 	##details<< 
@@ -38,25 +38,25 @@ corrFluxDensity <- function(
 attr(corrFluxDensity,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
-  CO2_molarFlux <- ds$CO2_Avg   # just to have a column, the flux should be calculated properly before
+  	CO2_molarFlux <- ds$CO2_Avg   # just to have a column (here concentrations), the flux should be calculated properly before
 	ds$CO2_flux <- corrFluxDensity(CO2_molarFlux, pressure=101*1000) #kPa converted to Pa	
-  plot(ds$CO2_flux)
+  	plot(ds$CO2_flux)
 }
 
 
-corrConcLeakage <- function(
-	### Calculate concentration corrected for dilution with water vapour		
-	conc 				##<< numeric vecgor: concentration [Amount of substance]
-	,pLeakage=1			##<< numeric scalar: XX
+corrFluxLeakage <- function(
+	### Calculate flux corrected for leakage of the chamber	
+	conc 				##<< numeric vector: concentration [Amount of substance]
+	,pLeakage=1			##<< numeric scalar: fraction of concentration lost by leakage
 ){
 	##details<< 
 	## XX
-	colc * pLeakage
+	conc * pLeakage
 	### numeric vector (length conc): corrected concentration [Amount of substance]
 } 
-attr(corrConcLeakage,"ex") <- function(){
+attr(corrFluxLeakage,"ex") <- function(){
 	data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
-	ds$CO2_leakC <- corrConcLeakage(ds)	
+	ds$CO2_leakC <- corrFluxLeakage(ds$CO2_Avg)	
 }
 

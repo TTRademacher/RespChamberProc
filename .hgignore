@@ -23,3 +23,5 @@ syntax: regexp
 ^paper14/Wutzler14_RespChamberProc\.pdf$
 syntax: regexp
 ^paper14/Wutzler14_RespChamberProc\.synctex\.gz$
+syntax: regexp
+^inst/paper14/SMANIEconc\.Rd$

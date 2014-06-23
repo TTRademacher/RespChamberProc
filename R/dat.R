@@ -27,7 +27,10 @@ readDat <- function(
 	rawData
 }
 attr(readDat,"ex") <- function(){
-	ds <- readDat("tmp/chamberLoggerEx1_short.dat")
+	fName <- system.file("genData/chamberLoggerEx1_short.dat", package = "RespChamberProc")
+	if( nzchar(fName) ){
+		ds <- readDat(fName)
+	}
 }
 
 
@@ -66,7 +69,7 @@ subsetContiguous <- function(
 	#dsia <- dsChunksL[[47]]	
 	dsChunksLClean <- do.call( rbind, lapply(dsChunksL, function(dsia){
 						collar <- dsia$Collar[1] 
-						dsi <- subset(dsia, is.finite(CO2_dry) )
+						dsi <- dsia[is.finite(dsia$CO2_dry),]
 						timeSec <- as.numeric(dsi$TIMESTAMP) - as.numeric( dsi$TIMESTAMP[1] )
 						#if( collar == indexNA || nrow(dsi) < minNRec || max(timeSec) < minTime || var(dsi$CO2_dry)==0  ){
 						if( collar == indexNA || nrow(dsi) < minNRec || max(timeSec) < minTime || fIsBadChunk(dsi)){
