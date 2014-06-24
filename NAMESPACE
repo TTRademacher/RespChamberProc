@@ -1,7 +1,7 @@
 exportPattern("^[^\\.]")	#exports all variables that do not start with a period.
 
 importFrom(changepoint, cpt.mean)
-importFrom(nlme, gls, corAR1, gnls)	# coef.corAR1	
+importFrom(nlme, gls, corAR1, gnls, glsControl)	# coef.corAR1	
 	
 
 

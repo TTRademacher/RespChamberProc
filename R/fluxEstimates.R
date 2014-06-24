@@ -10,36 +10,42 @@ calcClosedChamberFlux <- function(
 	,fRegressSelect = regressSelectPref1	 ##<< function to select the regression function based on fitting results. Signature and return must correspond to \code{\link{regressSelectPref1}} 
   	,volume=1               ##<< volume inside the chamber im [m3]
 	,isEstimateLeverage	= TRUE	##<< set to FALSE to omit the time consuming bootstrap for uncertainty due to leverage
+	,concSensitivity=1		##<< measurement sensitivity of concentration. With concentration change below this sensitivity, only a linear model is fit
+	,tLagFixed=NA			##<< possibility to specify the lagTime instead of estimating them
     ,isStopOnError = FALSE  ##<< set to TRUE to stop execution when no model could be fitted, instead of a warning
 	,...					##<< further arguments to \code{\link{sigmaBootLeverage}}
 ){
 	##seealso<< \code{\link{RespChamberProc}}
 	
-  ##details<< 
-  ## The function \code{fRegress} must conform to \code{\link{regressFluxSquare}}, i.e.
-  ## return a vector of length 2: the flux estimate and its standard deviation.
-  ## Optionally, it may return the model fit object in attribute "model"
-  ## If several functions are given, then the best fit is selected according to AIC criterion.
-  #
-  #plot( ds[,colConc] ~ ds[,colTime] )
-  if( !length(names(fRegress)) ) names(fRegress) <- 1:length(fRegress)
-  dslRes <- selectDataAfterLag(ds, colConc=colConc, colTime=colTime)
-  dsl <- dslRes$ds
-  timesOrig <- ds[,colTime]
-  times <- dsl[,colTime]
-  times0 <- as.numeric(times) - as.numeric(times[1])
-  tLag <- as.numeric(timesOrig[ dslRes$lagIndex ]) - as.numeric(timesOrig[1])
-  #abline(v=tLag+ds[1,colTime] )
-  conc <- dsl[,colConc]
-  #
-  # removed check for linear fit
-  # plot( conc ~ times )
+	concRange <- diff( quantile(ds[,colConc], c(0.05,0.95), na.rm=TRUE ))
+	if( concRange <= concSensitivity ){
+		fRegress=c(lin=regressFluxLinear)
+	}
+	##details<< 
+	## The function \code{fRegress} must conform to \code{\link{regressFluxSquare}}, i.e.
+	## return a vector of length 2: the flux estimate and its standard deviation.
+	## Optionally, it may return the model fit object in attribute "model"
+	## If several functions are given, then the best fit is selected according to AIC criterion.
+	#
+	#plot( ds[,colConc] ~ ds[,colTime] )
+	if( !length(names(fRegress)) ) names(fRegress) <- 1:length(fRegress)
+	dslRes <- selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=tLagFixed)
+	dsl <- dslRes$ds
+	timesOrig <- ds[,colTime]
+	times <- dsl[,colTime]
+	times0 <- as.numeric(times) - as.numeric(times[1])
+	tLag <- as.numeric(timesOrig[ dslRes$lagIndex ]) - as.numeric(timesOrig[1])
+	#abline(v=tLag+ds[1,colTime] )
+	conc <- dsl[,colConc]
+	#
+	# removed check for linear fit
+	# plot( conc ~ times )
 	mod <- NULL
 	#fReg <- fRegress[[1]]
 	#trace(fReg, recover)
-    fluxEstL <- lapply( fRegress, function(fReg){	
-    	fluxEst <- fReg( conc ,  times)
-    })
+	fluxEstL <- lapply( fRegress, function(fReg){	
+		fluxEst <- fReg( conc ,  times)
+	})
 	iBest <- fRegressSelect(fluxEstL)
 	if( !length(iBest) ){
 		msg <- "calcClosedChamberFlux: could not fit any of the specified functions to the concentration dataset"
@@ -51,46 +57,46 @@ calcClosedChamberFlux <- function(
 		res$stat["lagIndex"] <- dslRes$lagIndex 
 		return(res)
 	}
-    fReg <- fRegress[[iBest]]
-    fluxEst <- fluxEstL[[iBest]]$stat
-  	#lines( fitted(attr(fluxEst,"model")) ~  times0 , col="maroon")
-  	#abline( coefficients(attr(fluxEst,"model"))[1], fluxEst[1], col="blue" )
+	fReg <- fRegress[[iBest]]
+	fluxEst <- fluxEstL[[iBest]]$stat
+	#lines( fitted(attr(fluxEst,"model")) ~  times0 , col="maroon")
+	#abline( coefficients(attr(fluxEst,"model"))[1], fluxEst[1], col="blue" )
 	mod <- fluxEstL[[iBest]]$model
 	coefStart <- coefficients(mod)
 	tryAutoCorr <- is.finite( fluxEst["autoCorr"] )
 	#
-    leverageEst <- if( isTRUE(isEstimateLeverage) ) sigmaBootLeverage(conc, times, fRegress=fReg
+	leverageEst <- if( isTRUE(isEstimateLeverage) ) sigmaBootLeverage(conc, times, fRegress=fReg
 		, coefStart=coefStart, tryAutoCorr=tryAutoCorr ) else NA
-    ##details<<
-    ## There are two kinds of uncertainty associated with the flux.
-    ## The first comes from the uncertainty of the slope of concentration increase.
-    ## The second comes from the leverage of starting and end points of the regression (estimated by a bootstrap)
-    ## return value sdFlux is the maximum of those two components
-    #
-    # correct fluxes for density and express per chamber instead of per mol air
-    fluxEstTotal = corrFluxDensity(fluxEst, volume = volume
-                    , temp = ds[ dslRes$lagIndex,colTemp ]
-                    , pressure = ds[ dslRes$lagIndex,colPressure ])
-    leverageEstTotal = corrFluxDensity(leverageEst, volume = volume
-                                       , temp = ds[ dslRes$lagIndex,colTemp ]
-                                       , pressure = ds[ dslRes$lagIndex,colPressure ])
-    #
-    #corrFluxDensity( dsl, vol=2)
-  	##value<< list with entries \code{stat}, and \code{model}.   
-  	res <- list(
+	##details<<
+	## There are two kinds of uncertainty associated with the flux.
+	## The first comes from the uncertainty of the slope of concentration increase.
+	## The second comes from the leverage of starting and end points of the regression (estimated by a bootstrap)
+	## return value sdFlux is the maximum of those two components
+	#
+	# correct fluxes for density and express per chamber instead of per mol air
+	fluxEstTotal = corrFluxDensity(fluxEst, volume = volume
+	                , temp = ds[ dslRes$lagIndex,colTemp ]
+	                , pressure = ds[ dslRes$lagIndex,colPressure ])
+	leverageEstTotal = corrFluxDensity(leverageEst, volume = volume
+	                                   , temp = ds[ dslRes$lagIndex,colTemp ]
+	                                   , pressure = ds[ dslRes$lagIndex,colPressure ])
+	#
+	#corrFluxDensity( dsl, vol=2)
+	##value<< list with entries \code{stat}, and \code{model}.   
+	res <- list(
 		 stat= c(	##<< numeric vector with the following entries:
-  		flux = as.numeric(fluxEstTotal[1])			    ##<< the estimate of the CO2 flux into the chamber [mumol / s]
+		flux = as.numeric(fluxEstTotal[1])			    ##<< the estimate of the CO2 flux into the chamber [mumol / s]
 		,fluxMedian = as.numeric(leverageEstTotal[3])	##<< the median of the flux bootsrap estimates [mumol / s] 
-  		,sdFlux = max(fluxEstTotal["sdFlux"],leverageEstTotal["sd"], na.rm=TRUE)	##<< the standard deviation of the CO2 flux
-  		,tLag = tLag		                            ##<< time of lag phase in seconds
-  		,lagIndex = dslRes$lagIndex 					##<< index of the row at the end of lag-time
+		,sdFlux = max(fluxEstTotal["sdFlux"],leverageEstTotal["sd"], na.rm=TRUE)	##<< the standard deviation of the CO2 flux
+		,tLag = tLag		                            ##<< time of lag phase in seconds
+		,lagIndex = dslRes$lagIndex 					##<< index of the row at the end of lag-time
 		,autoCorr = as.numeric(fluxEst["autoCorr"])		##<< autocorrelation coefficient, NA if model with autocorrelation could not be fitted or had higher AIC than a model without autocorrelation
 		,AIC= AIC(mod)									##<< AIC goodness of fit for the model
-  		,sdFluxRegression = as.numeric(fluxEstTotal["sdFlux"]) ##<< the standard deviation of the flux by a single regression of CO2 flux
-  		,sdFluxLeverage = as.numeric(leverageEstTotal["sd"])   ##<< the standard deviation of the flux by leverage of starting or end values of the time series
+		,sdFluxRegression = as.numeric(fluxEstTotal["sdFlux"]) ##<< the standard deviation of the flux by a single regression of CO2 flux
+		,sdFluxLeverage = as.numeric(leverageEstTotal["sd"])   ##<< the standard deviation of the flux by leverage of starting or end values of the time series
 		,iFRegress=as.numeric(iBest)					##<< index of the best (lowest AIC) regression function
-  	), model = mod	)									##<< the model fit object
-    res
+	), model = mod	)									##<< the model fit object
+	res
 }
 attr(calcClosedChamberFlux,"ex") <- function(){
 	data(chamberLoggerEx1s)
@@ -104,6 +110,7 @@ attr(calcClosedChamberFlux,"ex") <- function(){
 	.tmp.compareFittingFunctions <- function(){
 		resLin <- calcClosedChamberFlux(ds, fRegress=list(regressFluxLinear))
 		resPoly <- calcClosedChamberFlux(ds, fRegress=list(regressFluxSquare))
+		#trace(regressFluxExp, recover)	#untrace(regressFluxExp)
 		resExp <- calcClosedChamberFlux(ds, fRegress=list(regressFluxExp) )
 		#trace(regressFluxTanh, recover)	#untrace(regressFluxTanh)
 		resTanh <- calcClosedChamberFlux(ds, fRegress=list(regressFluxTanh ))
@@ -152,17 +159,26 @@ selectDataAfterLag <- function(
   ds   ##<< data.frame with time and concentration columns
   ,colConc="CO2_dry"		##<< column name of CO2 concentration per dry air [ppm]
   ,colTime="TIMESTAMP"  	##<< column name of time column [s]
-  
+  ,tLagFixed=NA				##<< possibility to specify the lagTime (in seconds) instead of estimating them
 ){
 	##seealso<< \code{\link{RespChamberProc}}
-	
   # TODO: account for different times
-  iBreak <- min(cpt.mean(ds[,colConc],penalty="SIC",method="PELT",class=FALSE)) 
+  if( is.finite(tLagFixed) ){
+	times <- as.numeric(ds[,colTime])
+	times0 <-times - times[1] 
+	iBreak <- min(which( times0 >= tLagFixed ))  
+  }else {
+  	iBreak <- min(cpt.mean(ds[,colConc],penalty="SIC",method="PELT",class=FALSE))[1]
+	}
   ##value<< A list with entries
-  list(
-    lagIndex = iBreak    ##<< the index of the end of the lag period
-    ,ds = ds[ (iBreak+1):nrow(ds), ]   ##<< the dataset ds without the lag-period
-  )
+  if( iBreak < nrow(ds) ){
+	  list(
+	    lagIndex = iBreak    				##<< the index of the end of the lag period
+	    ,ds = ds[ (iBreak+1):nrow(ds), ]    ##<< the dataset ds without the lag-period (lagIndex not included)
+	  )
+  }else{
+	  list( lagIndex=1, ds=ds[-1,] )
+  }
 }
 attr(selectDataAfterLag,"ex") <- function(){
   data(chamberLoggerEx1s)
@@ -259,7 +275,7 @@ regressFluxExp <- function(
 		,times				##<< times of conc measurements	[seconds]
 		,start=c()			##<< numeric vector of starting parameters. May provide from last bootstrap to speed up fitting  
 		,tryAutoCorr=TRUE	##<< set to FALSE to not try to fit model with autocorrelation
-		,cSatFac=2  		##<< Position of the initial saturation (0 start, 1 end, >1 outside measured range)
+		,cSatFac=1.5  		##<< Position of the initial saturation (0 start, 1 end, >1 outside measured range)
 ){
 	##seealso<< \code{\link{RespChamberProc}}
 
@@ -304,12 +320,15 @@ regressFluxExp <- function(
 		b0 <- -coefficients(lm1)[2]
 		r0 <- a0*-b0
 		#plot( conc ~ timesSec )
+		#lines( I(-r0/b0 * exp(-b0*timesSec) + cSat0) ~ timesSec )
 	}
 	nlm1 <- try(
 			gnls( conc ~ -r/b * exp(-b*timesSec) + c
 					,params=r+b+c~1
-					,start = if( length(start) ) start else if( fluxLin < 0 )  list(r = r0, b =b0, c=cSat0) else list(r = -r0, b =b0, c=-cSat0) 
-					#,control=gls.control(tol = 1e-03, minFactor=1/1024/4)
+					,start = if( length(start) ) start else {
+						if( fluxLin < 0 )  list(r = r0, b =b0, c=cSat0) else list(r = -r0, b =b0, c=-cSat0)
+					}
+					#,control=glsControl(msVerbose=TRUE)
 					,correlation=NULL
 			)
 	, silent=TRUE)

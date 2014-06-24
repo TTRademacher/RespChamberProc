@@ -81,6 +81,7 @@ test_that("regressFlux autocorr data decreasing",{
 			# usually much lower false flux uncertainty
 			expect_true( is.na(res$stat["autoCorr"]) )
 			#	
+			# trace(regressFluxExp, recover)	#untrace(regressFluxExp)
 			res <- regressFluxExp( concA, times  )
 			expect_equal( as.numeric(res$stat["flux"]), expFlux, tolerance =0.5)
 			expect_equal( as.numeric(res$stat["sdFlux"]), expSdFlux, tolerance =0.5)

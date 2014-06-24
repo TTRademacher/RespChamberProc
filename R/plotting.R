@@ -17,8 +17,8 @@ plotResp <- function(
 		tLag <- resFlux$stat["tLag"]
 		abline( v=tLag, lty="dotted", col="grey" )
 		lines( fitted(resFlux$model) ~ I(times0[times0 >tLag]) )
-		signif=	max(0, -log10(resFlux$stat["sdFlux"]) )
-		fluxText <- paste( signif(resFlux$stat["flux"], signif), " \u00B1", signif(resFlux$stat["sdFlux"], signif),sep="")
+		prec=	ceiling(max(0, -log10(resFlux$stat["sdFlux"]) ))
+		fluxText <- paste( round(resFlux$stat["flux"], prec), " \u00B1", round(resFlux$stat["sdFlux"], prec),sep="")
 	}
 	legend( {if(!length(resFlux) || resFlux$stat["flux"] < 0) "topright" else "bottomright"}
 			,legend=c(label, fluxText )
