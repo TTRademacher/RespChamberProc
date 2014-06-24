@@ -76,5 +76,7 @@ subsetContiguous <- function(
 							return( NULL )
 						}else return(dsi)
 					}))
+	dsChunksLClean$iChunk <- as.factor(dsChunksLClean$iChunk)		# convert to factor
+	dsChunksLClean
 	### Argument \code{ds} with between-Chunk rows omitted and an additional integer column \code{iChunk} that designates the chunk number.
 }

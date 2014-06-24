@@ -6,7 +6,7 @@ Author: Thomas Wutzler, Oscar Perez Priego
 Maintainer: Thomas Wutzler <twutz@bgc-jena.mpg.de>
 Description: Processing data from respiration chambers  
 Depends: R (>= 1.14.0)
-Imports: changepoint, nlme
+Imports: changepoint, nlme, segmented
 Suggests: testthat
 License: GPL-2
 LazyLoad: yes

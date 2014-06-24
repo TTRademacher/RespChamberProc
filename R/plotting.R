@@ -16,7 +16,7 @@ plotResp <- function(
 	if( length(resFlux) ){
 		tLag <- resFlux$stat["tLag"]
 		abline( v=tLag, lty="dotted", col="grey" )
-		lines( fitted(resFlux$model) ~ I(times0[times0 >tLag]) )
+		lines( fitted(resFlux$model) ~ I(times0[times0 >= tLag]) )
 		prec=	ceiling(max(0, -log10(resFlux$stat["sdFlux"]) ))
 		fluxText <- paste( round(resFlux$stat["flux"], prec), " \u00B1", round(resFlux$stat["sdFlux"], prec),sep="")
 	}

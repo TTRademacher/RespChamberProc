@@ -16,7 +16,10 @@ calcClosedChamberFlux <- function(
 	,...					##<< further arguments to \code{\link{sigmaBootLeverage}}
 ){
 	##seealso<< \code{\link{RespChamberProc}}
-	
+	#
+	isMissingCols <- !(c(colConc, colTime, colTemp, colPressure) %in% colnames(ds))
+	if( any(isMissingCols) ) stop("calcClosedChamberFlux:  missing collumns ",paste(c(colConc, colTime, colTemp, colPressure)[isMissingCols],collapse=",") )
+	#
 	concRange <- diff( quantile(ds[,colConc], c(0.05,0.95), na.rm=TRUE ))
 	if( concRange <= concSensitivity ){
 		fRegress=c(lin=regressFluxLinear)
@@ -103,6 +106,7 @@ attr(calcClosedChamberFlux,"ex") <- function(){
 	ds <- chamberLoggerEx1s
     ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
 	conc <- ds$CO2_dry <- corrConcDilution(ds)
+	#trace(calcClosedChamberFlux, recover)	#untrace(calcClosedChamberFlux)
 	resFit <- calcClosedChamberFlux(ds)
 	resFit$stat[c("flux","sdFlux")]
 	#plotResp(ds, resFit)
@@ -153,8 +157,51 @@ regressSelectPref1 <- function(
 	iBest <- if( is.finite(AICs[1]) && (AICs[1] <= AICs[iBestOthers]+1.92) ) 1 else iBestOthers
 }
 
-
 selectDataAfterLag <- function(
+		### Omit the data within lag-time and normalize times to start after lag
+		ds   ##<< data.frame with time and concentration columns
+		,colConc="CO2_dry"		##<< column name of CO2 concentration per dry air [ppm]
+		,colTime="TIMESTAMP"  	##<< column name of time column [s]
+		,tLagFixed=NA			##<< possibility to specify the lagTime (in seconds) instead of estimating them
+		,maxLag = 50			##<< number of initial records to be screened for a breakpoint, i.e. the lag
+		,tLagInitial=10			##<< the initial estimate of the length of the lag-phase
+){
+	##seealso<< \code{\link{RespChamberProc}}
+	times <- as.numeric(ds[,colTime])[1:maxLag]
+	times0 <- times - times[1]
+	iBreak <- 1 		# default no lag phase
+	if( is.finite(tLagFixed) ){
+		iBreak <- min(which( times0 >= tLagFixed ))  
+	}else {
+		obs <- ds[1:maxLag,colConc]
+		lm0 <- lm(obs ~ times0)
+		o<-segmented(lm0, seg.Z= ~times0
+				,psi=list(times0=tLagInitial)
+				,control=seg.control(display=FALSE)
+		)
+		#plot( obs ~ times0 );  lines(fitted(o) ~ times0, col="red", lines(fitted(lm0)~times0))
+		if( AIC(o) < AIC(lm0) ){
+			iBreak <- min(which(times0 >= o$psi[1,2] ))
+		}
+	}
+	##value<< A list with entries
+	list(
+			lagIndex = iBreak    				##<< the index of the end of the lag period
+			,ds = ds[ (iBreak):nrow(ds), ]    ##<< the dataset ds without the lag-period (lagIndex included)
+	)
+}
+attr(selectDataAfterLag,"ex") <- function(){
+	data(chamberLoggerEx1s)
+	ds <- chamberLoggerEx1s
+	ds$CO2_dry <- corrConcDilution(ds)
+	#trace(selectDataAfterLag,recover)	#untrace(selectDataAfterLag)
+	ret <- selectDataAfterLag(ds)
+	plot( ds$CO2_dry)
+	abline(v=ret$lagIndex, col="red")
+}
+
+
+selectDataAfterLagOscar <- function(
   ### Omit the data within lag-time and normalize times to start after lag
   ds   ##<< data.frame with time and concentration columns
   ,colConc="CO2_dry"		##<< column name of CO2 concentration per dry air [ppm]
@@ -174,19 +221,11 @@ selectDataAfterLag <- function(
   if( iBreak < nrow(ds) ){
 	  list(
 	    lagIndex = iBreak    				##<< the index of the end of the lag period
-	    ,ds = ds[ (iBreak+1):nrow(ds), ]    ##<< the dataset ds without the lag-period (lagIndex not included)
+	    ,ds = ds[ (iBreak):nrow(ds), ]    ##<< the dataset ds without the lag-period (lagIndex included)
 	  )
   }else{
-	  list( lagIndex=1, ds=ds[-1,] )
+	  list( lagIndex=1, ds=ds )
   }
-}
-attr(selectDataAfterLag,"ex") <- function(){
-  data(chamberLoggerEx1s)
-  ds <- chamberLoggerEx1s
-  ds$CO2_dry <- corrConcDilution(ds)
-  ret <- selectDataAfterLag(ds)
-  plot( ds$CO2_dry)
-  abline(v=ret$lagIndex, col="red")
 }
 
 regressFluxLinear <- function(
