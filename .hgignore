@@ -8,8 +8,6 @@ syntax: regexp
 syntax: regexp
 ^tmp/.*$
 
-syntax: regexp
-^man$
 syntax: glob
 .Rhistory
 

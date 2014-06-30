@@ -39,7 +39,7 @@ calcClosedChamberFlux <- function(
 	dslRes <- if( isTRUE(debugInfo$useOscarsLagDectect) ){
 	  dslRes <- selectDataAfterLagOscar(ds, colConc=colConc, colTime=colTime, tLagFixed=tLagFixed)
 	}else{
-    selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=tLagFixed, maxLag=maxLag)
+    	selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=tLagFixed, maxLag=maxLag)
 	}
 	dsl <- dslRes$ds
 	timesOrig <- ds[,colTime]
