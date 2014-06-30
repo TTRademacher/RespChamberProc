@@ -27,9 +27,13 @@ plotDurationUncertainty <- function(
 	durationsR <- sapply( resFits, function(resFit){
 				resFit$duration
 			}) 
-	tmp2 <- cbind( duration=durationsR, t(sapply( resFits, function(resFit){resFit$stat}))) 
-	iMinTime <- min(which( tmp2[,"sdFlux"] < maxSdFlux ))
+	tmp2 <- cbind( duration=durationsR, t(sapply( resFits, function(resFit){resFit$stat})))
+	iMinTime <- if( max(tmp2[,"sdFlux"]) <= maxSdFlux ) min(which( tmp2[,"sdFlux"] <= maxSdFlux )) else nrow(tmp2)
 	minDuration <- tmp2[iMinTime,]
+	##details<< 
+	## Produces a plot with standard deviation of the flux estimate versus the duration of the measurment.
+	## The lines correspond to the given maxium acceptable standard deviation
+	## and the duration that matches this criterion.
 	plot( sdFlux ~ duration, tmp2, xlab="Duration of measurement (s)" , ylab="sd(fluxEstimate)")
 	abline(h = maxSdFlux, col="grey", lty="dashed" )
 	abline(v = minDuration["duration"], , col="grey", lty="dashed" )
@@ -37,7 +41,7 @@ plotDurationUncertainty <- function(
 	#
 	##value<< result of \code{\link{calcClosedChamberFlux}} for the minimum duration, with addition components 
 	c(resFits[[ iMinTime ]][1:2]
-		, duration=as.numeric(minDuration[1])	##<< minimum duration in seconds, with sdFlux < maxSdFlux
+		, duration=as.numeric(minDuration[1])	##<< minimum duration in seconds, with sdFlux < maxSdFlux (or maximum duration if criterion not met)
 		, statAll= list(tmp2)					##<< component stat of the fits for each duration
 	)
 }
