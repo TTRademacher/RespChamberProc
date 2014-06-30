@@ -1,11 +1,11 @@
 library(RespChamberProc)
 
-fileName <- "tmp/MANIP_Ch1_1.dat"
+fileName <- "tmp/Chamber1_ChamberData.dat"
 #fileName <- "tmp/MANIP_Ch1_2.dat"
 #fileName <- "tmp/MANIP_Ch3_0.dat"
 ds0 <- readDat(fileName, tz="CET")
 
-ds <- subset(ds0, as.numeric(TIMESTAMP) >= as.numeric(as.POSIXct("2014-03-03 00:00:01 CET")))
+ds <- subset(ds0, as.numeric(TIMESTAMP) >= as.numeric(as.POSIXct("2014-06-23 00:00:01 CET")))
 ds$CO2_dry <- corrConcDilution(ds, colConc = "CO2_LI840", colVapour = "H2O_LI840")
 ds$H2O_dry <- corrConcDilution(ds, colConc = "H2O_LI840", colVapour = "H2O_LI840")
 ds$Pa <- ds$AirPres * 100   # convert hPa to Pa
@@ -31,24 +31,31 @@ registerDoSNOW(cl)
 clusterEvalQ(cl, library(RespChamberProc))		# functions need to be loaded on remote hosts
 
 #dsi <- subset( dsChunksClean, iChunk==10 )
-system.time(res <- ddply( 	dsChunksClean, .(iChunk), function(dsi){
-			collar <- dsi$Collar[1] 
-			iChunk = dsi$iChunk[1]
-			print( paste(iChunk, dsi$TIMESTAMP[1]," Collar: ",collar) )
-			#timeSec <- as.numeric(dsi$TIMESTAMP) - as.numeric(dsi$TIMESTAMP)[1]
-      #plot( CO2_dry ~ timeSec, dsi )
-			#plot( H2O_dry ~ timeSec, dsi )
-			res <- calcClosedChamberFlux(dsi, colConc="CO2_dry", colTemp = "AirTemp", colPressure = "Pa", fRegress = c(regressFluxLinear, 
-							regressFluxTanh), volume = 0.6*0.6*0.6, isEstimateLeverage = TRUE, isStopOnError=FALSE)
-      resH20 <- calcClosedChamberFlux(dsi, colConc="H2O_dry", colTemp = "AirTemp", colPressure = "Pa", fRegress = c(regressFluxLinear, 
-            regressFluxTanh), volume = 0.6*0.6*0.6, isEstimateLeverage = TRUE, isStopOnError=FALSE)
-			# get additional environmental variables at the initial time
-			dsiInitial <- dsi[ 1, ,drop=FALSE]
-			cbind( data.frame( time=dsiInitial[,"TIMESTAMP"], collar=collar
-        , CO2_flux=res[1], CO2_flux_sd=res[2], H2O_flux=resH20[1], H2O_flux_sd=resH20[2] )
-				, dsiInitial[,c("Chamber","AirTemp","AirPres","PAR","SurTemp","SoilTemp","SoilMoist","VPD")] )
+#dsi <- subset( dsChunksClean, iChunk==77 )
+system.time(res <- ddply(   dsChunksClean, .(iChunk), function(dsi){
+  collar <- dsi$Collar[1] 
+  iChunk = dsi$iChunk[1]
+  print( paste(iChunk, dsi$TIMESTAMP[1]," Collar: ",collar) )
+  #timeSec <- as.numeric(dsi$TIMESTAMP) - as.numeric(dsi$TIMESTAMP)[1]
+  #plot( CO2_dry ~ timeSec, dsi )
+  #plot( H2O_dry ~ timeSec, dsi )
+  res <- calcClosedChamberFlux(dsi, colConc="CO2_dry", colTemp = "AirTemp", colPressure = "Pa"
+                               #, fRegress = c(regressFluxLinear, regressFluxTanh)
+                               , volume = 0.6*0.6*0.6, isEstimateLeverage = TRUE, isStopOnError=FALSE)
+  #lines(fitted(res$model) ~ timeSec[timeSec>=res$stat["tLag"]], col="red")
+  resH20 <- calcClosedChamberFlux(dsi, colConc="H2O_dry", colTemp = "AirTemp", colPressure = "Pa"
+                                  #, fRegress = c(regressFluxLinear, regressFluxTanh)
+                                  , maxLag=100    # slower respons of water vapour
+                                  ,debugInfo=list(useOscarsLagDectect=TRUE)
+                                  , volume = 0.6*0.6*0.6, isEstimateLeverage = TRUE, isStopOnError=FALSE)
+  #lines(fitted(resH20$model) ~ timeSec[timeSec>=resH20$stat["tLag"]], col="red")
+  # get additional environmental variables at the initial time
+  dsiInitial <- dsi[ 1, ,drop=FALSE]
+  cbind( data.frame( time=dsiInitial[,"TIMESTAMP"], collar=collar
+                     , CO2_flux=res$stat[1], CO2_flux_sd=res$stat[2], H2O_flux=resH20$stat[1], H2O_flux_sd=resH20$stat[2] )
+         , dsiInitial[,c("Chamber","AirTemp","AirPres","PAR","SurTemp","SoilTemp","SoilMoist","VPD")] )
 }
-, .parallel=TRUE
+#, .parallel=TRUE
 ))
 
 #stopCluster(cl)

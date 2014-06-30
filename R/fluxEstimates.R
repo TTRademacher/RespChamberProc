@@ -12,7 +12,11 @@ calcClosedChamberFlux <- function(
 	,isEstimateLeverage	= TRUE	##<< set to FALSE to omit the time consuming bootstrap for uncertainty due to leverage
 	,concSensitivity=1		##<< measurement sensitivity of concentration. With concentration change below this sensitivity, only a linear model is fit
 	,tLagFixed=NA			##<< possibility to specify the lagTime instead of estimating them
-    ,isStopOnError = FALSE  ##<< set to TRUE to stop execution when no model could be fitted, instead of a warning
+  ,isStopOnError = FALSE  ##<< set to TRUE to stop execution when no model could be fitted, instead of a warning
+	,maxLag = 50			##<< number of initial records to be screened for a breakpoint, i.e. the lag (higher for water vapour than for CO2)
+  ,debugInfo=list(
+    useOscarsLagDectect=FALSE
+    )
 	,...					##<< further arguments to \code{\link{sigmaBootLeverage}}
 ){
 	##seealso<< \code{\link{RespChamberProc}}
@@ -32,7 +36,11 @@ calcClosedChamberFlux <- function(
 	#
 	#plot( ds[,colConc] ~ ds[,colTime] )
 	if( !length(names(fRegress)) ) names(fRegress) <- 1:length(fRegress)
-	dslRes <- selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=tLagFixed)
+	dslRes <- if( isTRUE(debugInfo$useOscarsLagDectect) ){
+	  dslRes <- selectDataAfterLagOscar(ds, colConc=colConc, colTime=colTime, tLagFixed=tLagFixed)
+	}else{
+    selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=tLagFixed, maxLag=maxLag)
+	}
 	dsl <- dslRes$ds
 	timesOrig <- ds[,colTime]
 	times <- dsl[,colTime]
@@ -175,12 +183,17 @@ selectDataAfterLag <- function(
 	}else {
 		obs <- ds[1:maxLag,colConc]
 		lm0 <- lm(obs ~ times0)
-		o<-segmented(lm0, seg.Z= ~times0
+    o <-try( segmented(lm0, seg.Z= ~times0
 				,psi=list(times0=tLagInitial)
 				,control=seg.control(display=FALSE)
-		)
+		), silent=TRUE)
 		#plot( obs ~ times0 );  lines(fitted(o) ~ times0, col="red", lines(fitted(lm0)~times0))
-		if( AIC(o) < AIC(lm0) ){
+    if( inherits(o,"try-error")){
+      # if there is no breakpoint, an error with this the following message is thrown
+      # in this case keep the iBreak=1
+      if( !length(grep("at the boundary or too close",o)) ) stop(o)
+    }
+		if( !inherits(o,"try-error") && AIC(o) < AIC(lm0) ){
 			iBreak <- min(which(times0 >= o$psi[1,2] ))
 		}
 	}
@@ -211,12 +224,15 @@ selectDataAfterLagOscar <- function(
 	##seealso<< \code{\link{RespChamberProc}}
   # TODO: account for different times
   if( is.finite(tLagFixed) ){
-	times <- as.numeric(ds[,colTime])
-	times0 <-times - times[1] 
-	iBreak <- min(which( times0 >= tLagFixed ))  
+  	times <- as.numeric(ds[,colTime])
+  	times0 <-times - times[1] 
+  	iBreak <- min(which( times0 >= tLagFixed ))  
   }else {
+    recover()
   	iBreak <- min(cpt.mean(ds[,colConc],penalty="SIC",method="PELT",class=FALSE))[1]
-	}
+    #plot( ds[,colConc] )
+    #abline(v=iBreak)
+  }
   ##value<< A list with entries
   if( iBreak < nrow(ds) ){
 	  list(
