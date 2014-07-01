@@ -228,7 +228,6 @@ selectDataAfterLagOscar <- function(
   	times0 <-times - times[1] 
   	iBreak <- min(which( times0 >= tLagFixed ))  
   }else {
-    recover()
   	iBreak <- min(cpt.mean(ds[,colConc],penalty="SIC",method="PELT",class=FALSE))[1]
     #plot( ds[,colConc] )
     #abline(v=iBreak)

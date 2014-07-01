@@ -1,5 +1,5 @@
 plotDurationUncertainty <- function(
-	### plot the increase of uncertainty with decreaseing measurment duration
+	### plot the increase of uncertainty with decreaseing measurement duration
 	ds
 	,fRegress = c(exp=regressFluxExp, lin=regressFluxLinear, tanh=regressFluxTanh)	##<< list of functions to yield 
 			##<< a single flux estimate, see details of \code{\link{calcClosedChamberFlux}}
@@ -11,7 +11,7 @@ plotDurationUncertainty <- function(
 	times0 <- as.numeric(times) - as.numeric(times[1])
 	resFit0 <- calcClosedChamberFlux(ds,...)
 	resFit0$stat
-	durations <- seq( max(60,resFit0$stat["tLag"]), max(times0), length.out=nDur+1)
+	durations <- seq( max(65,resFit0$stat["tLag"]), max(times0), length.out=nDur+1)
 	duration <- durations[1]
 	#plot( CO2_dry ~ times0, ds)
 	resFitsO <- lapply( durations[-c(nDur+1) ], function(duration){
@@ -28,7 +28,7 @@ plotDurationUncertainty <- function(
 				resFit$duration
 			}) 
 	tmp2 <- cbind( duration=durationsR, t(sapply( resFits, function(resFit){resFit$stat})))
-	iMinTime <- if( max(tmp2[,"sdFlux"]) <= maxSdFlux ) min(which( tmp2[,"sdFlux"] <= maxSdFlux )) else nrow(tmp2)
+	iMinTime <- if( min(tmp2[,"sdFlux"]) <= maxSdFlux ) min(which( tmp2[,"sdFlux"] <= maxSdFlux )) else nrow(tmp2)
 	minDuration <- tmp2[iMinTime,]
 	##details<< 
 	## Produces a plot with standard deviation of the flux estimate versus the duration of the measurment.
@@ -49,7 +49,7 @@ attr(plotDurationUncertainty,"ex") <- function(){
 	data(chamberLoggerEx2)
 	ds <- subset(chamberLoggerEx2, iChunk==99)	# very strong (and therefore precise) uptake
 	#plot( CO2_dry ~ TIMESTAMP, ds )
-	resDur <- plotDurationUncertainty( ds, colTemp="AirTemp", volume = 0.6*0.6*0.6, maxSdFlux = 0.8 )
+	resDur <- plotDurationUncertainty( ds, colTemp="AirTemp", volume = 0.6*0.6*0.6, maxSdFlux = 0.8, nDur=10 )
 	resDur$duration
 	#plot( flux ~ duration, resDur$statAll )
 	#plot( sdFlux ~ duration, resDur$statAll )
