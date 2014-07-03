@@ -3,9 +3,10 @@ library(RespChamberProc)
 fileName <- "tmp/Chamber1_ChamberData.dat"
 #fileName <- "tmp/MANIP_Ch1_2.dat"
 #fileName <- "tmp/MANIP_Ch3_0.dat"
-ds0 <- readDat(fileName, tz="CET")
+#ds0 <- readDat(fileName, tz="CET")
+ds0 <- readDat(fileName, tz="UTC")    # keep all dates in UTC format (still actuallzy CET) to avoid daylight savings complications
 
-ds <- subset(ds0, as.numeric(TIMESTAMP) >= as.numeric(as.POSIXct("2014-06-23 00:00:01 CET")))
+ds <- subset(ds0, as.numeric(TIMESTAMP) >= as.numeric(as.POSIXctUTC("2014-06-23 00:00:01")) )
 ds$CO2_dry <- corrConcDilution(ds, colConc = "CO2_LI840", colVapour = "H2O_LI840")
 ds$H2O_dry <- corrConcDilution(ds, colConc = "H2O_LI840", colVapour = "H2O_LI840")
 ds$Pa <- ds$AirPres * 100   # convert hPa to Pa
@@ -31,7 +32,7 @@ registerDoSNOW(cl)
 clusterEvalQ(cl, library(RespChamberProc))		# functions need to be loaded on remote hosts
 
 #dsi <- subset( dsChunksClean, iChunk==10 )
-#dsi <- subset( dsChunksClean, iChunk==77 )
+#dsi <- subset( dsChunksClean, iChunk==19 )
 system.time(res <- ddply(   dsChunksClean, .(iChunk), function(dsi){
   collar <- dsi$Collar[1] 
   iChunk = dsi$iChunk[1]
@@ -46,7 +47,7 @@ system.time(res <- ddply(   dsChunksClean, .(iChunk), function(dsi){
   resH20 <- calcClosedChamberFlux(dsi, colConc="H2O_dry", colTemp = "AirTemp", colPressure = "Pa"
                                   #, fRegress = c(regressFluxLinear, regressFluxTanh)
                                   , maxLag=100    # slower respons of water vapour
-                                  ,debugInfo=list(useOscarsLagDectect=TRUE)
+                                  #,debugInfo=list(useOscarsLagDectect=TRUE)
                                   , volume = 0.6*0.6*0.6, isEstimateLeverage = TRUE, isStopOnError=FALSE)
   #lines(fitted(resH20$model) ~ timeSec[timeSec>=resH20$stat["tLag"]], col="red")
   # get additional environmental variables at the initial time
@@ -55,7 +56,7 @@ system.time(res <- ddply(   dsChunksClean, .(iChunk), function(dsi){
                      , CO2_flux=res$stat[1], CO2_flux_sd=res$stat[2], H2O_flux=resH20$stat[1], H2O_flux_sd=resH20$stat[2] )
          , dsiInitial[,c("Chamber","AirTemp","AirPres","PAR","SurTemp","SoilTemp","SoilMoist","VPD")] )
 }
-#, .parallel=TRUE
+, .parallel=TRUE
 ))
 
 #stopCluster(cl)
