@@ -39,7 +39,7 @@ subsetContiguous <- function(
 	ds						##<< data.frame of measurements 
 	,colTime="TIMESTAMP"	##<< column name that of time (POSIXct)
 	,colIndex="Collar"		##<< column name of index variable (factor or integer)
-	,gapLength=20			##<< minimal length of a gap between subsets (seconds)
+	,gapLength=12			##<< minimal length of a gap between subsets (seconds)
 	,minNRec=20				##<< minimum number of records within one contiguous subset
 	,minTime=60				##<< minimum length of time that a contiguous subsets covers
 	,indexNA=0				##<< value of the index column, that signifies records not to use
