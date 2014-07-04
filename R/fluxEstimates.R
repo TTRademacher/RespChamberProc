@@ -9,14 +9,15 @@ calcClosedChamberFlux <- function(
 	,fRegress = c(exp=regressFluxExp, lin=regressFluxLinear, tanh=regressFluxTanh)	##<< list of functions to yield a single flux estimate, see details
 	,fRegressSelect = regressSelectPref1	 ##<< function to select the regression function based on fitting results. Signature and return must correspond to \code{\link{regressSelectPref1}} 
   	,volume=1               ##<< volume inside the chamber im [m3]
-	,isEstimateLeverage	= TRUE	##<< set to FALSE to omit the time consuming bootstrap for uncertainty due to leverage
 	,concSensitivity=1		##<< measurement sensitivity of concentration. With concentration change below this sensitivity, only a linear model is fit
-	,tLagFixed=NA			##<< possibility to specify the lagTime instead of estimating them
-  ,isStopOnError = FALSE  ##<< set to TRUE to stop execution when no model could be fitted, instead of a warning
 	,maxLag = 50			##<< number of initial records to be screened for a breakpoint, i.e. the lag (higher for water vapour than for CO2)
-  ,debugInfo=list(
-    useOscarsLagDectect=FALSE
-    )
+  	,debugInfo=list(		##<< rarely used controls, mostly for debugging
+    	useOscarsLagDectect=FALSE	##<< using the changepoint method for lag detection
+		,omitAutoCorrFit=FALSE		##<< set to TRUE to omit trying to fit autocorrelation (faster but maybe wrong (low) uncertainty estimate)
+		,omitEstimateLeverage=FALSE	##<< set to TRUE to omit the time consuming bootstrap for uncertainty due to leverage
+		,tLagFixed=NA				##<< possibility to specify the lagTime instead of estimating them
+		,isStopOnError = FALSE  	##<< set to TRUE to stop execution when no model could be fitted, instead of a warning
+)
 	,...					##<< further arguments to \code{\link{sigmaBootLeverage}}
 ){
 	##seealso<< \code{\link{RespChamberProc}}
@@ -37,13 +38,18 @@ calcClosedChamberFlux <- function(
 	#plot( ds[,colConc] ~ ds[,colTime] )
 	if( !length(names(fRegress)) ) names(fRegress) <- 1:length(fRegress)
 	dslRes <- if( isTRUE(debugInfo$useOscarsLagDectect) ){
-	  dslRes <- selectDataAfterLagOscar(ds, colConc=colConc, colTime=colTime, tLagFixed=tLagFixed)
+	  dslRes <- selectDataAfterLagOscar(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed)
 	}else{
-    	selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=tLagFixed, maxLag=maxLag)
+    	selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed, maxLag=maxLag)
 	}
 	dsl <- dslRes$ds
 	timesOrig <- ds[,colTime]
 	times <- dsl[,colTime]
+	if( any(table(times) != 1) ){
+		#recover()
+		stop("calcClosedChamberFlux: must provide data series with unique times (encountered multiple times)\n"
+						,paste(capture.output(ds[1,1:5]), collapse="\n") )
+	} 
 	times0 <- as.numeric(times) - as.numeric(times[1])
 	tLag <- as.numeric(timesOrig[ dslRes$lagIndex ]) - as.numeric(timesOrig[1])
 	#abline(v=tLag+ds[1,colTime] )
@@ -55,12 +61,12 @@ calcClosedChamberFlux <- function(
 	#fReg <- fRegress[[1]]
 	#trace(fReg, recover)
 	fluxEstL <- lapply( fRegress, function(fReg){	
-		fluxEst <- fReg( conc ,  times)
+		fluxEst <- fReg( conc ,  times, tryAutoCorr=!isTRUE(debugInfo$omitAutoCorrFit) )
 	})
 	iBest <- fRegressSelect(fluxEstL)
 	if( !length(iBest) ){
 		msg <- "calcClosedChamberFlux: could not fit any of the specified functions to the concentration dataset"
-		if(isTRUE(isStopOnError)) stop(msg) else warning(msg)
+		if(isTRUE(debugInfo$isStopOnError)) stop(msg) else warning(msg)
 		res <- list( stat=structure(rep(NA, 10), names=c("flux", "fluxMedian", "sdFlux", "tLag", "lagIndex", "autoCorr"
 											,"AIC","sdFluxRegression","sdFluxLeverage", "iFRegress") )
 					,model=NULL)
@@ -76,7 +82,7 @@ calcClosedChamberFlux <- function(
 	coefStart <- coefficients(mod)
 	tryAutoCorr <- is.finite( fluxEst["autoCorr"] )
 	#
-	leverageEst <- if( isTRUE(isEstimateLeverage) ) sigmaBootLeverage(conc, times, fRegress=fReg
+	leverageEst <- if( !isTRUE(debugInfo$omitEstimateLeverage) ) sigmaBootLeverage(conc, times, fRegress=fReg
 		, coefStart=coefStart, tryAutoCorr=tryAutoCorr ) else NA
 	##details<<
 	## There are two kinds of uncertainty associated with the flux.
@@ -178,7 +184,7 @@ selectDataAfterLag <- function(
 	times <- as.numeric(ds[,colTime])[1:maxLag]
 	times0 <- times - times[1]
 	iBreak <- 1 		# default no lag phase
-	if( is.finite(tLagFixed) ){
+	if( length(tLagFixed) && is.finite(tLagFixed) ){
 		iBreak <- min(which( times0 >= tLagFixed ))  
 	}else {
 		obs <- ds[1:maxLag,colConc]
@@ -223,7 +229,7 @@ selectDataAfterLagOscar <- function(
 ){
 	##seealso<< \code{\link{RespChamberProc}}
   # TODO: account for different times
-  if( is.finite(tLagFixed) ){
+  if( length(tLagFixed) && is.finite(tLagFixed) ){
   	times <- as.numeric(ds[,colTime])
   	times0 <-times - times[1] 
   	iBreak <- min(which( times0 >= tLagFixed ))  
