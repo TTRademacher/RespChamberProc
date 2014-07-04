@@ -5,9 +5,9 @@
 \usage{calcClosedChamberFlux(ds, colConc = "CO2_dry", colTime = "TIMESTAMP", 
     colTemp = "TA_Avg", colPressure = "Pa", fRegress = c(exp = regressFluxExp, 
         lin = regressFluxLinear, tanh = regressFluxTanh), fRegressSelect = regressSelectPref1, 
-    volume = 1, isEstimateLeverage = TRUE, concSensitivity = 1, 
-    tLagFixed = NA, isStopOnError = FALSE, maxLag = 50, debugInfo = list(useOscarsLagDectect = FALSE), 
-    ...)}
+    volume = 1, concSensitivity = 1, maxLag = 50, debugInfo = list(useOscarsLagDectect = FALSE, 
+        omitAutoCorrFit = FALSE, omitEstimateLeverage = FALSE, 
+        tLagFixed = NA, isStopOnError = FALSE), ...)}
 \arguments{
   \item{ds}{data.frame with concentration and time column of a chamber measurement of one replicate}
   \item{colConc}{column name of CO2 concentration [ppm]}
@@ -17,13 +17,15 @@
   \item{fRegress}{list of functions to yield a single flux estimate, see details}
   \item{fRegressSelect}{function to select the regression function based on fitting results. Signature and return must correspond to \code{\link{regressSelectPref1}}}
   \item{volume}{volume inside the chamber im [m3]}
-  \item{isEstimateLeverage}{set to FALSE to omit the time consuming bootstrap for uncertainty due to leverage}
   \item{concSensitivity}{measurement sensitivity of concentration. With concentration change below this sensitivity, only a linear model is fit}
-  \item{tLagFixed}{possibility to specify the lagTime instead of estimating them}
-  \item{isStopOnError}{set to TRUE to stop execution when no model could be fitted, instead of a warning}
   \item{maxLag}{number of initial records to be screened for a breakpoint, i.e. the lag (higher for water vapour than for CO2)}
-  \item{debugInfo}{
-}
+  \item{debugInfo}{rarely used controls, mostly for debugging\describe{
+\item{useOscarsLagDectect}{using the changepoint method for lag detection}
+\item{omitAutoCorrFit}{set to TRUE to omit trying to fit autocorrelation (faster but maybe wrong (low) uncertainty estimate)}
+\item{omitEstimateLeverage}{set to TRUE to omit the time consuming bootstrap for uncertainty due to leverage}
+\item{tLagFixed}{possibility to specify the lagTime instead of estimating them}
+\item{isStopOnError}{set to TRUE to stop execution when no model could be fitted, instead of a warning}
+}}
   \item{\dots}{further arguments to \code{\link{sigmaBootLeverage}}}
 }
 \details{The function \code{fRegress} must conform to \code{\link{regressFluxSquare}}, i.e.

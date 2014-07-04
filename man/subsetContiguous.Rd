@@ -3,7 +3,7 @@
 \title{subsetContiguous}
 \description{Get contiguous subsets }
 \usage{subsetContiguous(ds, colTime = "TIMESTAMP", colIndex = "Collar", 
-    gapLength = 20, minNRec = 20, minTime = 60, indexNA = 0, 
+    gapLength = 12, minNRec = 20, minTime = 60, indexNA = 0, 
     fIsBadChunk = function(dsi) FALSE)}
 \arguments{
   \item{ds}{data.frame of measurements}

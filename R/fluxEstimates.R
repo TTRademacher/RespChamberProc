@@ -12,12 +12,14 @@ calcClosedChamberFlux <- function(
 	,concSensitivity=1		##<< measurement sensitivity of concentration. With concentration change below this sensitivity, only a linear model is fit
 	,maxLag = 50			##<< number of initial records to be screened for a breakpoint, i.e. the lag (higher for water vapour than for CO2)
   	,debugInfo=list(		##<< rarely used controls, mostly for debugging
+			##describe<<
     	useOscarsLagDectect=FALSE	##<< using the changepoint method for lag detection
 		,omitAutoCorrFit=FALSE		##<< set to TRUE to omit trying to fit autocorrelation (faster but maybe wrong (low) uncertainty estimate)
 		,omitEstimateLeverage=FALSE	##<< set to TRUE to omit the time consuming bootstrap for uncertainty due to leverage
 		,tLagFixed=NA				##<< possibility to specify the lagTime instead of estimating them
 		,isStopOnError = FALSE  	##<< set to TRUE to stop execution when no model could be fitted, instead of a warning
-)
+			##end<<
+	)
 	,...					##<< further arguments to \code{\link{sigmaBootLeverage}}
 ){
 	##seealso<< \code{\link{RespChamberProc}}
