@@ -2,11 +2,6 @@ exportPattern("^[^\\.]")	#exports all variables that do not start with a period.
 
 importFrom(changepoint, cpt.mean)
 importFrom(segmented, segmented, seg.control)
-importFrom(nlme, gls, corAR1, gnls, glsControl)	# coef.corAR1	
+importFrom(nlme, gls, corAR1, gnls, glsControl, gnlsControl)	# coef.corAR1	
+import(ggplot2)		
 	
-
-
-
-
-
-

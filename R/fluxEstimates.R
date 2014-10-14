@@ -6,9 +6,10 @@ calcClosedChamberFlux <- function(
 	,colTime="TIMESTAMP"	##<< column name of time [s]
 	,colTemp="TA_Avg"       ##<< column name of air temperature inside chamber [degC]
     ,colPressure="Pa"       ##<< column name of air pressure inside chamber [Pa]
+	,volume=1               ##<< volume inside the chamber im [m3]
+	,area=1					##<< area of the exchange surface [m2]
 	,fRegress = c(exp=regressFluxExp, lin=regressFluxLinear, tanh=regressFluxTanh)	##<< list of functions to yield a single flux estimate, see details
 	,fRegressSelect = regressSelectPref1	 ##<< function to select the regression function based on fitting results. Signature and return must correspond to \code{\link{regressSelectPref1}} 
-  	,volume=1               ##<< volume inside the chamber im [m3]
 	,concSensitivity=1		##<< measurement sensitivity of concentration. With concentration change below this sensitivity, only a linear model is fit
 	,maxLag = 50			##<< number of initial records to be screened for a breakpoint, i.e. the lag (higher for water vapour than for CO2)
   	,debugInfo=list(		##<< rarely used controls, mostly for debugging
@@ -65,6 +66,7 @@ calcClosedChamberFlux <- function(
 	fluxEstL <- lapply( fRegress, function(fReg){	
 		fluxEst <- fReg( conc ,  times, tryAutoCorr=!isTRUE(debugInfo$omitAutoCorrFit) )
 	})
+	#plot(conc ~ times); lines(fitted(fluxEst$model) ~ times)
 	iBest <- fRegressSelect(fluxEstL)
 	if( !length(iBest) ){
 		msg <- "calcClosedChamberFlux: could not fit any of the specified functions to the concentration dataset"
@@ -92,20 +94,20 @@ calcClosedChamberFlux <- function(
 	## The second comes from the leverage of starting and end points of the regression (estimated by a bootstrap)
 	## return value sdFlux is the maximum of those two components
 	#
-	# correct fluxes for density and express per chamber instead of per mol air
+	# correct fluxes for density and express per chamber instead of per mol air, express per area
 	fluxEstTotal = corrFluxDensity(fluxEst, volume = volume
 	                , temp = ds[ dslRes$lagIndex,colTemp ]
-	                , pressure = ds[ dslRes$lagIndex,colPressure ])
+	                , pressure = ds[ dslRes$lagIndex,colPressure ]) / area
 	leverageEstTotal = corrFluxDensity(leverageEst, volume = volume
 	                                   , temp = ds[ dslRes$lagIndex,colTemp ]
-	                                   , pressure = ds[ dslRes$lagIndex,colPressure ])
+	                                   , pressure = ds[ dslRes$lagIndex,colPressure ]) / area
 	#
 	#corrFluxDensity( dsl, vol=2)
 	##value<< list with entries \code{stat}, and \code{model}.   
 	res <- list(
 		 stat= c(	##<< numeric vector with the following entries:
-		flux = as.numeric(fluxEstTotal[1])			    ##<< the estimate of the CO2 flux into the chamber [mumol / s]
-		,fluxMedian = as.numeric(leverageEstTotal[3])	##<< the median of the flux bootsrap estimates [mumol / s] 
+		flux = as.numeric(fluxEstTotal[1])			    ##<< the estimate of the CO2 flux into the chamber [mumol / m2 / s]
+		,fluxMedian = as.numeric(leverageEstTotal[3])	##<< the median of the flux bootsrap estimates [mumol / m2 / s] 
 		,sdFlux = max(fluxEstTotal["sdFlux"],leverageEstTotal["sd"], na.rm=TRUE)	##<< the standard deviation of the CO2 flux
 		,tLag = tLag		                            ##<< time of lag phase in seconds
 		,lagIndex = dslRes$lagIndex 					##<< index of the row at the end of lag-time
@@ -385,7 +387,7 @@ regressFluxExp <- function(
 		#lines( I(-r0/b0 * exp(-b0*timesSec) + cSat0) ~ timesSec )
 	}
 	nlm1 <- try(
-			gnls( conc ~ -r/b * exp(-b*timesSec) + c
+			tmp <- gnls( conc ~ -r/b * exp(-b*timesSec) + c
 					,params=r+b+c~1
 					,start = if( length(start) ) start else {
 						if( fluxLin < 0 )  list(r = r0, b =b0, c=cSat0) else list(r = -r0, b =b0, c=-cSat0)
@@ -395,7 +397,10 @@ regressFluxExp <- function(
 			)
 	, silent=TRUE)
 	nlm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(nlm1,"try-error")) nlm1 else try(
-						update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec) )
+						#tmp <- update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec) )
+						tmp <- update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec)
+							,control=gnlsControl(nlsTol=0.01)	# sometimes not fitting, here already good starting values
+						)
 			, silent=TRUE)
 	#plot( conc ~ timesSec )
 	#lines( I(a0*exp(-b0*timesSec) + cSat0) ~ timesSec, col="maroon"  ) 
@@ -491,7 +496,9 @@ regressFluxTanh <- function(
 			}
 	, silent=TRUE)
 	nlm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(nlm1,"try-error") ) nlm1 else try(
-						update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec) )
+						update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec) 
+								,control=gnlsControl(nlsTol=0.01)	# sometimes not fitting, here already good starting values
+						)
 						, silent=TRUE)
 	# lines(fitted(nlm1) ~ timesSec, col="orange" )
 	#
