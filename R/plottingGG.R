@@ -1,4 +1,4 @@
-.plotCampaignConcSeries <- function(
+plotCampaignConcSeries <- function(
 		### plot all the time series into a series of pdf-pages
 		ds					##<< data frame to plot, with collumns "id", "TIMESTAMP" and \code{varName}
 		,resL=NULL			##<< list with results of \code{\link{calcClosedChamberFlux}} for each id-subset in ds
@@ -60,7 +60,7 @@
 			})
 	dev.off()
 }
-attr( .plotCampaignConcSeries, "ex") <- function(){
+attr( plotCampaignConcSeries, "ex") <- function(){
 	load(file.path(projectDir,"SMANIEconc.Rd"))
 	ds0 <- ds <- SMANIEconc
 	#tmp <- subset(ds0, campaign==5 )
@@ -91,6 +91,6 @@ attr( .plotCampaignConcSeries, "ex") <- function(){
 	names(resL)[ sapply( resL, inherits,  "try-error") ]	# "1.2.19"  "1.3.2"   "1.3.23"  "2.2.270" "2.2.277"
 	#
 	fileName=file.path(projectDir,paste0("SMANIEconc_CO2_dry.pdf"))	##<< fileName
-	.plotCampaignConcSeries(ds, resL=resL, fileName=fileName)
+	plotCampaignConcSeries(ds, resL=resL, fileName=fileName)
 }
 

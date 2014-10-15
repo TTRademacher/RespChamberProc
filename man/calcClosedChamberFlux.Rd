@@ -3,9 +3,10 @@
 \title{calcClosedChamberFlux}
 \description{Calculate CO2 flux and its uncertainties for a non steady-state canopy chamber.}
 \usage{calcClosedChamberFlux(ds, colConc = "CO2_dry", colTime = "TIMESTAMP", 
-    colTemp = "TA_Avg", colPressure = "Pa", fRegress = c(exp = regressFluxExp, 
-        lin = regressFluxLinear, tanh = regressFluxTanh), fRegressSelect = regressSelectPref1, 
-    volume = 1, concSensitivity = 1, maxLag = 50, debugInfo = list(useOscarsLagDectect = FALSE, 
+    colTemp = "TA_Avg", colPressure = "Pa", volume = 1, area = 1, 
+    fRegress = c(exp = regressFluxExp, lin = regressFluxLinear, 
+        tanh = regressFluxTanh), fRegressSelect = regressSelectPref1, 
+    concSensitivity = 1, maxLag = 50, debugInfo = list(useOscarsLagDectect = FALSE, 
         omitAutoCorrFit = FALSE, omitEstimateLeverage = FALSE, 
         tLagFixed = NA, isStopOnError = FALSE), ...)}
 \arguments{
@@ -14,9 +15,10 @@
   \item{colTime}{column name of time [s]}
   \item{colTemp}{column name of air temperature inside chamber [degC]}
   \item{colPressure}{column name of air pressure inside chamber [Pa]}
+  \item{volume}{volume inside the chamber im [m3]}
+  \item{area}{area of the exchange surface [m2]}
   \item{fRegress}{list of functions to yield a single flux estimate, see details}
   \item{fRegressSelect}{function to select the regression function based on fitting results. Signature and return must correspond to \code{\link{regressSelectPref1}}}
-  \item{volume}{volume inside the chamber im [m3]}
   \item{concSensitivity}{measurement sensitivity of concentration. With concentration change below this sensitivity, only a linear model is fit}
   \item{maxLag}{number of initial records to be screened for a breakpoint, i.e. the lag (higher for water vapour than for CO2)}
   \item{debugInfo}{rarely used controls, mostly for debugging\describe{
@@ -39,8 +41,8 @@ The second comes from the leverage of starting and end points of the regression 
 return value sdFlux is the maximum of those two components}
 \value{list with entries \code{stat}, and \code{model}.   
 \item{stat}{numeric vector with the following entries:}
-\item{flux}{the estimate of the CO2 flux into the chamber [mumol / s]}
-\item{fluxMedian}{the median of the flux bootsrap estimates [mumol / s]}
+\item{flux}{the estimate of the CO2 flux into the chamber [mumol / m2 / s]}
+\item{fluxMedian}{the median of the flux bootsrap estimates [mumol / m2 / s]}
 \item{sdFlux}{the standard deviation of the CO2 flux}
 \item{tLag}{time of lag phase in seconds}
 \item{lagIndex}{index of the row at the end of lag-time}

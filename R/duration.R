@@ -1,23 +1,25 @@
 plotDurationUncertainty <- function(
 	### plot the increase of uncertainty with decreaseing measurement duration
 	ds
+	,colTime="TIMESTAMP"	##<< column name of time [s]
 	,fRegress = c(exp=regressFluxExp, lin=regressFluxLinear, tanh=regressFluxTanh)	##<< list of functions to yield 
 			##<< a single flux estimate, see details of \code{\link{calcClosedChamberFlux}}
 	,...	##<< further arguments to \code{\link{calcClosedChamberFlux}}
 	,nDur = 20		##<< number of durations to check
 	,maxSdFlux = 1	##<< maxium allowed standard deviation of flux in [mumol / s]
 ){
-	times <- ds$TIMESTAMP
+	times <- ds[[colTime]]
 	times0 <- as.numeric(times) - as.numeric(times[1])
-	resFit0 <- calcClosedChamberFlux(ds,...)
-	resFit0$stat
+	resFit0 <- calcClosedChamberFlux(ds, colTime=colTime, fRegress=fRegress, ...)
+	#resFit0$stat
 	durations <- seq( max(65,resFit0$stat["tLag"]), max(times0), length.out=nDur+1)
 	duration <- durations[1]
 	#plot( CO2_dry ~ times0, ds)
 	resFitsO <- lapply( durations[-c(nDur+1) ], function(duration){
 				dss <- subset(ds, times0 <= duration )
 				times0s <- times0[times0 <= duration]
-				resFit <- calcClosedChamberFlux(dss, tLagFixed=resFit0$stat["tLag"], fRegress=fRegress[resFit0$stat["iFRegress"]],...) 
+				resFit <- calcClosedChamberFlux(dss, tLagFixed=resFit0$stat["tLag"]
+					,colTime=colTime, fRegress=fRegress[resFit0$stat["iFRegress"]],...) 
 				#plot( CO2_dry ~ times0s, dss)
 				#lines( fitted(resFit$model) ~ times0s[times0s >= resFit0$stat["tLag"]], col="red")
 				c(resFit, duration = max(times0s) )
@@ -28,7 +30,7 @@ plotDurationUncertainty <- function(
 				resFit$duration
 			}) 
 	tmp2 <- cbind( duration=durationsR, t(sapply( resFits, function(resFit){resFit$stat})))
-	iMinTime <- if( min(tmp2[,"sdFlux"]) <= maxSdFlux ) min(which( tmp2[,"sdFlux"] <= maxSdFlux )) else nrow(tmp2)
+	iMinTime <- if( min(tmp2[,"sdFlux"], na.rm=TRUE) <= maxSdFlux ) min(which( tmp2[,"sdFlux"] <= maxSdFlux )) else nrow(tmp2)
 	minDuration <- tmp2[iMinTime,]
 	##details<< 
 	## Produces a plot with standard deviation of the flux estimate versus the duration of the measurment.
