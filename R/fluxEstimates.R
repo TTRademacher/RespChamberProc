@@ -185,13 +185,14 @@ selectDataAfterLag <- function(
 		,tLagInitial=10			##<< the initial estimate of the length of the lag-phase
 ){
 	##seealso<< \code{\link{RespChamberProc}}
-	times <- as.numeric(ds[,colTime])[1:maxLag]
+  maxLagConstrained <- min(maxLag, nrow(ds))
+	times <- as.numeric(ds[,colTime])[1:maxLagConstrained]
 	times0 <- times - times[1]
 	iBreak <- 1 		# default no lag phase
 	if( length(tLagFixed) && is.finite(tLagFixed) ){
 		iBreak <- min(which( times0 >= tLagFixed ))  
 	}else {
-		obs <- ds[1:maxLag,colConc]
+		obs <- ds[1:maxLagConstrained,colConc]
 		lm0 <- lm(obs ~ times0)
     o <-try( segmented(lm0, seg.Z= ~times0
 				,psi=list(times0=tLagInitial)
@@ -208,10 +209,14 @@ selectDataAfterLag <- function(
 		}
 	}
 	##value<< A list with entries
-	list(
+	isEnoughTimeInSecondsInRemainingData <- (times[length(times)] - times[iBreak]) >= 60
+	if( (iBreak < nrow(ds)) && isEnoughTimeInSecondsInRemainingData ){
+	  list(
 			lagIndex = iBreak    				##<< the index of the end of the lag period
 			,ds = ds[ (iBreak):nrow(ds), ]    ##<< the dataset ds without the lag-period (lagIndex included)
-	)
+	)} else {
+	  list(lagIndex = 1,ds = ds)    
+	}
 }
 attr(selectDataAfterLag,"ex") <- function(){
 	data(chamberLoggerEx1s)
@@ -243,7 +248,8 @@ selectDataAfterLagOscar <- function(
     #abline(v=iBreak)
   }
   ##value<< A list with entries
-  if( iBreak < nrow(ds) ){
+  isEnoughTimeInSecondsInRemainingData <- (times[length(times)] - times[iBreak]) >= 60
+  if( (iBreak < nrow(ds)) && isEnoughTimeInSecondsInRemainingData ){
 	  list(
 	    lagIndex = iBreak    				##<< the index of the end of the lag period
 	    ,ds = ds[ (iBreak):nrow(ds), ]    ##<< the dataset ds without the lag-period (lagIndex included)
@@ -557,7 +563,10 @@ sigmaBootLeverage <- function(
 	##seealso<< \code{\link{RespChamberProc}}
 	
   periodLength <- diff( as.numeric(times[c(1,length(times))]) )
-  if( periodLength < 60 ) warning(paste("Time series of only",periodLength," seconds is too short. Recommended are at least 60 seconds"))
+    if( periodLength < 60 ){
+      warning(paste("Time series of only",periodLength," seconds is too short. Recommended are at least 60 seconds. Returning NA uncertainty."))
+      return( c( sd=NA_real_, "5%"=NA_real_, "50%"=NA_real_, "95%"=NA_real_ ) )
+    } 
   start <- seq (0, 10)   # indices of starting the time series
   close <- seq(max(15, length(conc)-40), length(conc), 1) # indices of the end (deployment) of the duration
   
