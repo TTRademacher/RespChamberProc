@@ -28,6 +28,8 @@ calcClosedChamberFlux <- function(
 	isMissingCols <- !(c(colConc, colTime, colTemp, colPressure) %in% colnames(ds))
 	if( any(isMissingCols) ) stop("calcClosedChamberFlux:  missing collumns ",paste(c(colConc, colTime, colTemp, colPressure)[isMissingCols],collapse=",") )
 	#
+	if( !( is.numeric(ds[,colTime]) ||  inherits(ds[,colTime], "POSIXct")) ) stop(
+				"Timestamp column must be given in seconds, i.e. must be of class POSIXct, integer, or numeric. But it was of class ",paste(class(ds[,colTime]),collapse=",") )
 	concRange <- diff( quantile(ds[,colConc], c(0.05,0.95), na.rm=TRUE ))
 	if( concRange <= concSensitivity ){
 		fRegress=c(lin=regressFluxLinear)
@@ -270,7 +272,7 @@ regressFluxLinear <- function(
 	##seealso<< \code{\link{RespChamberProc}}
 	
 	timesSec <- as.numeric(times) - as.numeric(times[1])
-	lm1 <- gls( conc ~ timesSec	 )
+	lm1 <- try( gls( conc ~ timesSec	 ), silent=TRUE)
 	lm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(lm1,"try-error")) lm1 else
 				gls( conc ~ timesSec
 						,correlation=corAR1( 0.3, form = ~ timesSec)
