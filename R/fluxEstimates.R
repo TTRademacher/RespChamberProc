@@ -3,7 +3,7 @@ calcClosedChamberFlux <- function(
 	### Calculate CO2 flux and its uncertainties for a non steady-state canopy chamber.
 	ds						##<< data.frame with concentration and time column of a chamber measurement of one replicate
 	,colConc="CO2_dry"		##<< column name of CO2 concentration [ppm]
-	,colTime="TIMESTAMP"	##<< column name of time [s]
+	,colTime="TIMESTAMP"	##<< column name of time [s], must be of class POSIXct or numeric or integer
 	,colTemp="TA_Avg"       ##<< column name of air temperature inside chamber [degC]
     ,colPressure="Pa"       ##<< column name of air pressure inside chamber [Pa]
 	,volume=1               ##<< volume inside the chamber im [m3]
@@ -141,7 +141,7 @@ attr(calcClosedChamberFlux,"ex") <- function(){
 		
 		times <- ds$TIMESTAMP
 		times0 <- as.numeric(times) - as.numeric(times[1])
-		times0Fit <- times0[times0>resLin$stat["tLag"] ]
+		times0Fit <- times0[times0>=resLin$stat["tLag"] ]
 		plot( resid(resTanh$model, type="normalized") ~  times0Fit )	# residual plots
 		qqnorm(resid(resTanh$model, type="normalized")); abline(0,1)
 		
@@ -187,7 +187,7 @@ selectDataAfterLag <- function(
 		,tLagInitial=10			##<< the initial estimate of the length of the lag-phase
 ){
 	##seealso<< \code{\link{RespChamberProc}}
-  maxLagConstrained <- min(maxLag, nrow(ds))
+  	maxLagConstrained <- min(maxLag, nrow(ds))
 	times <- as.numeric(ds[,colTime])[1:maxLagConstrained]
 	times0 <- times - times[1]
 	iBreak <- 1 		# default no lag phase
@@ -215,7 +215,7 @@ selectDataAfterLag <- function(
 	if( (iBreak < nrow(ds)) && isEnoughTimeInSecondsInRemainingData ){
 	  list(
 			lagIndex = iBreak    				##<< the index of the end of the lag period
-			,ds = ds[ (iBreak):nrow(ds), ]    ##<< the dataset ds without the lag-period (lagIndex included)
+			,ds = ds[ (iBreak):nrow(ds), ]    	##<< the dataset ds without the lag-period (lagIndex included)
 	)} else {
 	  list(lagIndex = 1,ds = ds)    
 	}

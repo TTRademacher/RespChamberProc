@@ -2,10 +2,8 @@
 \alias{readDat}
 \title{readDat}
 \description{Read a data loggger .dat file into a data-frame		}
-\usage{readDat(fName, nRowsFileInfo = 1, nRowsColInfo = 2, sep = ",", 
-    ..., colClasses = rep(NA, ncol(colInfo)), colsTimeStamp = 1, 
-    formatTS = "\%Y-\%m-\%d \%H:\%M:\%S", tz = "UTC", na.strings = c("", 
-        "NA", "NAN", "\\"NAN\\""))}\arguments{
+\usage{"\\nreadDat(fName, nRowsFileInfo = 1, nRowsColInfo = 2, sep = \\",\\", ..., colClasses = rep(NA, ncol(colInfo)), colsTimeStamp = 1, formatTS = \\"\\\%Y-\\\%m-\\\%d \\\%H:\\\%M:\\\%S\\", tz = \\"UTC\\", na.strings = c(\\"\\", \\"NA\\", \\"NAN\\", \\"\\\\\"NAN\\\\\"\\"))\\n"}
+\arguments{
   \item{fName}{scalar string: file name}
   \item{nRowsFileInfo}{integer scalar: number of lines before column information}
   \item{nRowsColInfo}{integer vector: number of lines with column description}

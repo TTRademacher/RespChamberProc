@@ -2,7 +2,8 @@
 \alias{corrFluxLeakage}
 \title{corrFluxLeakage}
 \description{Calculate flux corrected for leakage of the chamber	}
-\usage{corrFluxLeakage(conc, pLeakage = 1)}\arguments{
+\usage{corrFluxLeakage(conc, pLeakage = 1)}
+\arguments{
   \item{conc}{numeric vector: concentration [Amount of substance]}
   \item{pLeakage}{numeric scalar: fraction of concentration lost by leakage}
 }

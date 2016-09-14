@@ -4,7 +4,8 @@
 \description{plot all the time series into a series of pdf-pages}
 \usage{plotCampaignConcSeries(ds, resL = NULL, varName = "CO2_dry", 
     idCol = "iChunk", timeCol = "TIMESTAMP", plotsPerPage = 64, 
-    fileName = paste0(varName, ".pdf"), colIds = c())}\arguments{
+    fileName = paste0(varName, ".pdf"), colIds = c())}
+\arguments{
   \item{ds}{data frame to plot, with collumns "id", "TIMESTAMP" and \code{varName}}
   \item{resL}{list with results of \code{\link{calcClosedChamberFlux}} for each id-subset in ds}
   \item{varName}{variable to plot}

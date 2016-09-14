@@ -2,7 +2,8 @@
 \alias{as.POSIXctUTC}
 \title{as POSIXctUTC}
 \description{construct a time in timezone UTC and set tzone attribute to UTC for correct printing}
-\usage{as.POSIXctUTC(x)}\arguments{
+\usage{as.POSIXctUTC(x)}
+\arguments{
   \item{x}{An object to be converted.}
 }
 

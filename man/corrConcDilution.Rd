@@ -2,7 +2,8 @@
 \alias{corrConcDilution}
 \title{corrConcDilution}
 \description{Calculate concentration corrected for dilution with water vapor		}
-\usage{corrConcDilution(ds, colConc = "CO2_Avg", colVapour = "H20_Avg")}\arguments{
+\usage{corrConcDilution(ds, colConc = "CO2_Avg", colVapour = "H20_Avg")}
+\arguments{
   \item{ds}{data frame with each row one observations, and respective columns}
   \item{colConc}{column name of CO2 concentration [ppm]}
   \item{colVapour}{column name of CO2 concentration [ppt]}

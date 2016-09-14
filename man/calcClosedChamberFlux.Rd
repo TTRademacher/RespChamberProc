@@ -3,15 +3,16 @@
 \title{calcClosedChamberFlux}
 \description{Calculate CO2 flux and its uncertainties for a non steady-state canopy chamber.}
 \usage{calcClosedChamberFlux(ds, colConc = "CO2_dry", colTime = "TIMESTAMP", 
-    colTemp = "TA_Avg", colPressure = "Pa", volume = 1, area = 1, 
-    fRegress = c(exp = regressFluxExp, lin = regressFluxLinear, 
+    colTemp = "TA_Avg", colPressure = "Pa", volume = 1, 
+    area = 1, fRegress = c(exp = regressFluxExp, lin = regressFluxLinear, 
         tanh = regressFluxTanh), fRegressSelect = regressSelectPref1, 
     concSensitivity = 1, maxLag = 50, debugInfo = list(useOscarsLagDectect = FALSE, 
         omitAutoCorrFit = FALSE, omitEstimateLeverage = FALSE, 
-        tLagFixed = NA, isStopOnError = FALSE), ...)}\arguments{
+        tLagFixed = NA, isStopOnError = FALSE), ...)}
+\arguments{
   \item{ds}{data.frame with concentration and time column of a chamber measurement of one replicate}
   \item{colConc}{column name of CO2 concentration [ppm]}
-  \item{colTime}{column name of time [s]}
+  \item{colTime}{column name of time [s], must be of class POSIXct or numeric or integer}
   \item{colTemp}{column name of air temperature inside chamber [degC]}
   \item{colPressure}{column name of air pressure inside chamber [Pa]}
   \item{volume}{volume inside the chamber im [m3]}
@@ -78,7 +79,7 @@ resFit$stat[c("flux","sdFlux")]
 	
 	times <- ds$TIMESTAMP
 	times0 <- as.numeric(times) - as.numeric(times[1])
-	times0Fit <- times0[times0>resLin$stat["tLag"] ]
+	times0Fit <- times0[times0>=resLin$stat["tLag"] ]
 	plot( resid(resTanh$model, type="normalized") ~  times0Fit )	# residual plots
 	qqnorm(resid(resTanh$model, type="normalized")); abline(0,1)
 	

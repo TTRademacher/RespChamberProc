@@ -2,7 +2,8 @@
 \alias{regressFluxSquare}
 \title{regressFluxSquare}
 \description{Estimate the initial flux and its standard deviation by polynomial regression}
-\usage{regressFluxSquare(conc, times, start = c(), tryAutoCorr = TRUE)}\arguments{
+\usage{regressFluxSquare(conc, times, start = c(), tryAutoCorr = TRUE)}
+\arguments{
   \item{conc}{numeric vector of CO2 concentrations [ppm]}
   \item{times}{times of conc measurements	[seconds]}
   \item{start}{numeric vector of starting parameters. Not used here.}

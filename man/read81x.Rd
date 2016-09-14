@@ -2,9 +2,8 @@
 \alias{read81x}
 \title{read81x}
 \description{Read a Licor generated .x81 file into a data-frame		}
-\usage{read81x(fName, nRowsFileInfo = 23, sep = "\\t", ..., colsTimeStamp = 3, 
-    formatTS = "\%Y-\%m-\%d \%H:\%M:\%S", tz = "UTC", na.strings = c("", 
-        "NA", "NAN", "\\"NAN\\""))}\arguments{
+\usage{"\\nread81x(fName, nRowsFileInfo = 23, sep = \\"\\\t\\", ..., colsTimeStamp = 3, formatTS = \\"\\\%Y-\\\%m-\\\%d \\\%H:\\\%M:\\\%S\\", tz = \\"UTC\\", na.strings = c(\\"\\", \\"NA\\", \\"NAN\\", \\"\\\\\"NAN\\\\\"\\"))\\n"}
+\arguments{
   \item{fName}{scalar string: file name}
   \item{nRowsFileInfo}{scalar integer: number of lines of initial file information}
   \item{sep}{column separator}
