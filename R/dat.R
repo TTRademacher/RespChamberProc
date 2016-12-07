@@ -16,7 +16,7 @@ readDat <- function(
 	setClass("myDate", where=globalenv())
 	setAs("character","myDate", function(from) as.POSIXct(from, format=formatTS, tz=tz), where=globalenv() )
 	isConnection <- inherits(fName, "connection")
-	con <- if( isConnection ) fName else file(fname,"r")
+	con <- if( isConnection ) fName else file(fName,"r")
 	if( !isOpen(con) ){
 		on.exit(close(con))
 		open(con)

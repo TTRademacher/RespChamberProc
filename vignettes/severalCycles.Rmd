@@ -21,7 +21,7 @@ knit_hooks$set(spar = function(before, options, envir) {
 # genVigs("severalCycles")
 ```
 
-Processing several measurment cycles
+Processing several measurement cycles
 ==============================================
 
 ```{r results='hide'}

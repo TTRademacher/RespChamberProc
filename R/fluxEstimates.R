@@ -292,7 +292,8 @@ regressFluxLinear <- function(
 			,AIC=AIC(nlmBest)									##<< model fit diagnostics
 			,autoCorr = ##<< coefficient of autocorrelation
 					## or NA if model with autocorrelation could not be fitted or had higher AIC than model without autocorrelation
-					if( length(corStruct) ) as.numeric(nlme:::coef.corAR1(corStruct, unconstrained=FALSE)) else NA
+					# see ?nlme:::coef.corAR1
+					if( length(corStruct) ) as.numeric(coef(corStruct, unconstrained=FALSE)) else NA
 		)
 	, model = nlmBest)	##<< the model-fit object (here of class gls)
 	res
@@ -331,7 +332,7 @@ regressFluxSquare <- function(
 					  ,AIC=AIC(nlmBest)									##<< model fit diagnostics
 					  ,autoCorr = ##<< coefficient of autocorrelation
 							  ## or NA if model with autocorrelation could not be fitted or had higher AIC than model without autocorrelation
-							  if( length(corStruct) ) as.numeric(nlme:::coef.corAR1(corStruct, unconstrained=FALSE)) else NA
+							  if( length(corStruct) ) as.numeric(coef(corStruct, unconstrained=FALSE)) else NA
 			  )
 			  , model = nlmBest)	##<< the model-fit object (here of class gls)
 	  res
@@ -433,7 +434,7 @@ regressFluxExp <- function(
 							,AIC=AIC(nlmBest)									##<< model fit diagnostics
 							,autoCorr = ##<< coefficient of autocorrelation
 							## or NA if model with autocorrelation could not be fitted or had higher AIC than model without autocorrelation
-							if( length(corStruct) ) as.numeric(nlme:::coef.corAR1(corStruct, unconstrained=FALSE)) else NA
+							if( length(corStruct) ) as.numeric(coef(corStruct, unconstrained=FALSE)) else NA
 						) 
 					}else c(
 										flux = NA
@@ -530,7 +531,7 @@ regressFluxTanh <- function(
 								,AIC=AIC(nlmBest)									##<< model fit diagnostics
 								,autoCorr = ##<< coefficient of autocorrelation
 										## or NA if model with autocorrelation could not be fitted or had higher AIC than model without autocorrelation
-										if( length(corStruct) ) as.numeric(nlme:::coef.corAR1(corStruct, unconstrained=FALSE)) else NA
+										if( length(corStruct) ) as.numeric(coef(corStruct, unconstrained=FALSE)) else NA
 						) 
 					}else c(
 								flux = NA

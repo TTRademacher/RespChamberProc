@@ -1,10 +1,10 @@
 Package: RespChamberProc
 Title: Processing data from respiration chambers  
-Version: 0.5.228
+Version: 0.5.230
 Date: 2014-02-05
 Author: Thomas Wutzler, Oscar Perez Priego
 Maintainer: Thomas Wutzler <twutz@bgc-jena.mpg.de>
-Description: Processing data from respiration chambers  
+Description: Processing data from respiration chambers.  
 Depends: R (>= 1.14.0), methods
 Imports: changepoint, nlme, segmented, ggplot2, plyr
 Suggests: testthat
