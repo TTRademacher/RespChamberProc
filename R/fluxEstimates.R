@@ -170,11 +170,15 @@ regressSelectPref1 <- function(
 		fluxEstL 	##<< list of return values of different regression functions such as \code{\link{regressFluxLinear}}
 ){
 	##value<< index of the best regression function
-	if( length(fluxEstL) == 1 ) 
-		return( if( is.finite(fluxEstL[[1]]$stat["AIC"])) 1 else integer(0) )
+	retFirst <- if( is.finite(fluxEstL[[1]]$stat["AIC"])) 1L else integer(0)  
+	if( length(fluxEstL) == 1 ) return(retFirst) 
 	AICs <- sapply(fluxEstL,function(entry){ as.numeric(entry$stat["AIC"]) })
-	iBestOthers <- which.min( AICs[-1] )+1	 
-	iBest <- if( is.finite(AICs[1]) && (AICs[1] <= AICs[iBestOthers]+1.92) ) 1 else iBestOthers
+	AICOthers <- AICs[-1]
+	iFiniteOthers <- which(is.finite(AICOthers))
+	if( !length(iFiniteOthers) ) return(retFirst) 
+	AICFiniteOthers <- AICOthers[iFiniteOthers]
+	iBestFiniteOthers <- which.min( AICFiniteOthers )	 
+	iBest <- if( is.finite(AICs[1]) && (AICs[1] <= AICFiniteOthers[iBestFiniteOthers]+1.92) ) 1L else 1L+iFiniteOthers[iBestFiniteOthers]
 }
 
 selectDataAfterLag <- function(
@@ -185,6 +189,7 @@ selectDataAfterLag <- function(
 		,tLagFixed=NA			##<< possibility to specify the lagTime (in seconds) instead of estimating them
 		,maxLag = 50			##<< number of initial records to be screened for a breakpoint, i.e. the lag
 		,tLagInitial=10			##<< the initial estimate of the length of the lag-phase
+		,minTimeDataAfterBreak=30	##<< number of minimum time (in seconds) left after breakpoint
 ){
 	##seealso<< \code{\link{RespChamberProc}}
   	maxLagConstrained <- min(maxLag, nrow(ds))
@@ -196,22 +201,22 @@ selectDataAfterLag <- function(
 	}else {
 		obs <- ds[1:maxLagConstrained,colConc]
 		lm0 <- lm(obs ~ times0)
-    o <-try( segmented(lm0, seg.Z= ~times0
-				,psi=list(times0=tLagInitial)
-				,control=seg.control(display=FALSE)
-		), silent=TRUE)
-		#plot( obs ~ times0 );  lines(fitted(o) ~ times0, col="red", lines(fitted(lm0)~times0))
-    if( inherits(o,"try-error")){
-      # if there is no breakpoint, an error with this the following message is thrown
-      # in this case keep the iBreak=1
-      if( !length(grep("at the boundary or too close",o)) ) stop(o)
-    }
+	    o <-try( segmented(lm0, seg.Z= ~times0
+					,psi=list(times0=tLagInitial)
+					,control=seg.control(display=FALSE)
+			), silent=TRUE)
+			#plot( obs ~ times0 );  lines(fitted(o) ~ times0, col="red", lines(fitted(lm0)~times0))
+	    if( inherits(o,"try-error")){
+	      # if there is no breakpoint, an error with this the following message is thrown
+	      # in this case keep the iBreak=1
+	      if( !length(grep("at the boundary or too close",o)) ) stop(o)
+	    }
 		if( !inherits(o,"try-error") && AIC(o) < AIC(lm0) ){
 			iBreak <- min(which(times0 >= o$psi[1,2] ))
 		}
 	}
 	##value<< A list with entries
-	isEnoughTimeInSecondsInRemainingData <- (times[length(times)] - times[iBreak]) >= 60
+	isEnoughTimeInSecondsInRemainingData <- (times[length(times)] - times[iBreak]) >= minTimeDataAfterBreak
 	if( (iBreak < nrow(ds)) && isEnoughTimeInSecondsInRemainingData ){
 	  list(
 			lagIndex = iBreak    				##<< the index of the end of the lag period
@@ -237,6 +242,7 @@ selectDataAfterLagOscar <- function(
   ,colConc="CO2_dry"		##<< column name of CO2 concentration per dry air [ppm]
   ,colTime="TIMESTAMP"  	##<< column name of time column [s]
   ,tLagFixed=NA				##<< possibility to specify the lagTime (in seconds) instead of estimating them
+  ,minTimeDataAfterBreak=30	##<< number of minimum time (in seconds) left after breakpoint
 ){
 	##seealso<< \code{\link{RespChamberProc}}
   # TODO: account for different times
@@ -250,7 +256,7 @@ selectDataAfterLagOscar <- function(
     #abline(v=iBreak)
   }
   ##value<< A list with entries
-  isEnoughTimeInSecondsInRemainingData <- (times[length(times)] - times[iBreak]) >= 60
+  isEnoughTimeInSecondsInRemainingData <- (times[length(times)] - times[iBreak]) >= minTimeDataAfterBreak
   if( (iBreak < nrow(ds)) && isEnoughTimeInSecondsInRemainingData ){
 	  list(
 	    lagIndex = iBreak    				##<< the index of the end of the lag period
@@ -487,26 +493,26 @@ regressFluxTanh <- function(
 	#lines( (tanh(timesSec*-coefficients(nlm1)[1]/coefficients(nlm1)[3])+1)*coefficients(nlm1)[3] - coefficients(nlm1)[2])  # initial in concP range
 	# deprecated: use nlsLM from minpack.lm to switch between Newten and Levenberg, avoid singular gradient in near-linear cases
 	# http://www.r-bloggers.com/a-better-nls/
-	nlm1 <- try(
+	nlm1 <- try( 
 			if( fluxLin < 0 ){
-				nlm1 <- gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
+				nlm1 <- suppressWarnings(gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
 					,start = if(length(start)) start else list(s=s0, cSat = cSat0, c0 = c00)
 					,params= c(s+cSat+c0~1)
 					,correlation=NULL
-				)
+				))
 			} else {
 				# increasing concentrations
-				nlm1 <- gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
+				nlm1 <- suppressWarnings(gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
 					,start = if(length(start)) start else list(s=-s0, cSat = cSat0, c0 = c00)
 					,params= c(s+cSat+c0~1)
 					,correlation=NULL
-				)
+				))
 			}
 	, silent=TRUE)
 	nlm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(nlm1,"try-error") ) nlm1 else try(
-						update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec) 
+						suppressWarnings(update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec) 
 								,control=gnlsControl(nlsTol=0.01)	# sometimes not fitting, here already good starting values
-						)
+						))
 						, silent=TRUE)
 	# lines(fitted(nlm1) ~ timesSec, col="orange" )
 	#

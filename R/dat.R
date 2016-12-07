@@ -1,6 +1,6 @@
 readDat <- function(
 	### Read a data loggger .dat file into a data-frame		
-	fName					##<< scalar string: file name
+	fName					##<< scalar string: file name or a connection, e.g. returned by unz
 	,nRowsFileInfo = 1		##<< integer scalar: number of lines before column information
 	,nRowsColInfo = 2		##<< integer vector: number of lines with column description
 	,sep=","				##<< column separator
@@ -15,10 +15,20 @@ readDat <- function(
 	## Assumes that there
 	setClass("myDate", where=globalenv())
 	setAs("character","myDate", function(from) as.POSIXct(from, format=formatTS, tz=tz), where=globalenv() )
-	fileInfo <- readLines(fName, n=nRowsFileInfo )
-	colInfo <- read.table(fName, header=TRUE, skip=nRowsFileInfo, nrows=max(1,nRowsColInfo), sep=sep, na.strings=na.strings)
+	isConnection <- inherits(fName, "connection")
+	con <- if( isConnection ) fName else file(fname,"r")
+	if( !isOpen(con) ){
+		on.exit(close(con))
+		open(con)
+	} 
+	fileInfo <- readLines(con, n=nRowsFileInfo )	
+	colInfo <- read.table(con, header=TRUE
+		#, skip=nRowsFileInfo
+		, nrows=max(1,nRowsColInfo), sep=sep, na.strings=na.strings, stringsAsFactors = FALSE)
 	colClasses[colsTimeStamp] <- "myDate"
-	rawData <- read.table(fName, header=FALSE, skip=nRowsFileInfo+1+nRowsColInfo, sep=sep, na.strings=na.strings, ...
+	rawData <- read.table(con, header=FALSE
+		#, skip=nRowsFileInfo+1+nRowsColInfo
+		, sep=sep, na.strings=na.strings, ...
 					,colClasses=colClasses)
 	colnames(rawData) <- colnames(colInfo)	
 	#plot( CO2_Avg ~ TIMESTAMP, data=rawData )
@@ -30,6 +40,12 @@ attr(readDat,"ex") <- function(){
 	fName <- system.file("genData/chamberLoggerEx1_short.dat", package = "RespChamberProc")
 	if( nzchar(fName) ){
 		ds <- readDat(fName)
+	}
+	# reading first from zipped file
+	fName <- system.file("genData/SMANIE_Chamber1_26032015.zip", package = "RespChamberProc")
+	if( nzchar(fName) ){
+		ds <- readDat( unz(fName, file=unzip(fName, list=TRUE)[1,"Name"] )
+				,tz="UTC")
 	}
 }
 
@@ -94,7 +110,7 @@ subsetContiguous <- function(
 	,colIndex="Collar"		##<< column name of index variable (factor or integer)
 	,gapLength=12			##<< minimal length of a gap between subsets (seconds)
 	,minNRec=20				##<< minimum number of records within one contiguous subset
-	,minTime=60				##<< minimum length of time that a contiguous subsets covers
+	,minTime=60				##<< minimum length of time (in seconds) that a contiguous subsets covers
 	,indexNA=0				##<< value of the index column, that signifies records not to use
 	,fIsBadChunk=function(dsi) FALSE	
 	### additional function taking and subset and returning a boolean value whether its a chunk to be omitted

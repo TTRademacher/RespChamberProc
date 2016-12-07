@@ -24,13 +24,14 @@ attr(corrConcDilution,"ex") <- function(){
 
 corrFluxDensity <- function(
 	### Calculate total flux inside the chamber from flux per amount of air
-  	CO2_molarFlux 		##<< numeric vector of rate of changes in CO2 dry molar fraction [ppm/sec]
+  	CO2_molarFlux 		##<< numeric vector of rate of changes in CO2 dry molar fraction [ppm/s]
 	,volume=1			##<< numeric scalar: volume of the chamber in [m3]
 	,temp=20	     	##<< numeric vector: temperature inside chamber [degC]  
 	,pressure=101325 	##<< numeric vector: pressure inside chamber [Pa]
 ){
 	##details<< 
-	## The amount of air is determined by the volumen, pressure and temperature (universal gas law)
+	## The amount of air or CO2 is determined by the volume, pressure and temperature (universal gas law).
+	## Converts concentrations to amount of substance in mol.
 	R <- 8.3144621	# universal gas constant in [J/K/mol]  (J=Pa * m3)  
 	CO2_molarFlux * pressure * volume  / (temp+273.15) / R 
 	### numeric vector (nrow ds):  CO2 flux [mumol CO2 /s]

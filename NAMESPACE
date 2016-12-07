@@ -8,4 +8,5 @@ importFrom(nlme, gls, corAR1, gnls, glsControl, gnlsControl)	# coef.corAR1
 
 import(ggplot2)		
 importFrom(plyr, d_ply, dlply)	
+# import(dplyr)		# here really need plyr because returning lists	 
 	
