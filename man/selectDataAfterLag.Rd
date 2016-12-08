@@ -26,7 +26,7 @@
 
 \seealso{\code{\link{RespChamberProc}}}
 \examples{
-data(chamberLoggerEx1s)
+#data(chamberLoggerEx1s)
 ds <- chamberLoggerEx1s
 ds$CO2_dry <- corrConcDilution(ds)
 #trace(selectDataAfterLag,recover)	#untrace(selectDataAfterLag)

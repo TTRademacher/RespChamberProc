@@ -16,7 +16,7 @@
 
 
 \examples{
-data(chamberLoggerEx1s)
+#data(chamberLoggerEx1s)
 ds <- chamberLoggerEx1s
 ds$CO2_leakC <- corrFluxLeakage(ds$CO2_Avg)	
 }

@@ -23,7 +23,7 @@
 
 
 \examples{
-data(chamberLoggerEx1s)
+#data(chamberLoggerEx1s)
 dsi <- chamberLoggerEx1s
 dsi$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
 conc <- dsi$CO2_dry <- corrConcDilution(dsi)

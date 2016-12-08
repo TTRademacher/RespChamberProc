@@ -22,7 +22,7 @@
 
 \code{\link{RespChamberProc}}}
 \examples{
-data(chamberLoggerEx1s)
+#data(chamberLoggerEx1s)
 ds <- chamberLoggerEx1s[-(1:16),]
 conc <- ds$CO2_dry <- corrConcDilution(ds)  
 times <- ds$TIMESTAMP

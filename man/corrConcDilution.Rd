@@ -18,7 +18,7 @@ per dry air.}
 
 
 \examples{
-data(chamberLoggerEx1s)
+#data(chamberLoggerEx1s)
 ds <- chamberLoggerEx1s
 ds$CO2_dry <- corrConcDilution(ds)	
 }

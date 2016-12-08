@@ -29,10 +29,11 @@ and the duration that matches this criterion.}
 
 
 \examples{
-data(chamberLoggerEx2)
+#data(chamberLoggerEx2)
 ds <- subset(chamberLoggerEx2, iChunk==99)	# very strong (and therefore precise) uptake
 #plot( CO2_dry ~ TIMESTAMP, ds )
-resDur <- plotDurationUncertainty( ds, colTemp="AirTemp", volume = 0.6*0.6*0.6, maxSdFlux = 0.8, nDur=10 )
+resDur <- plotDurationUncertainty( ds, colTemp="AirTemp", volume = 0.6*0.6*0.6
+	, maxSdFlux = 0.8, nDur=10 )
 resDur$duration
 #plot( flux ~ duration, resDur$statAll )
 #plot( sdFlux ~ duration, resDur$statAll )

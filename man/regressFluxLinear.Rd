@@ -28,7 +28,7 @@ or NA if model with autocorrelation could not be fitted or had higher AIC than m
 
 \code{\link{RespChamberProc}}}
 \examples{
-data(chamberLoggerEx1s)
+#data(chamberLoggerEx1s)
 ds <- chamberLoggerEx1s
 conc <- ds$CO2_Avg
 times <- ds$TIMESTAMP

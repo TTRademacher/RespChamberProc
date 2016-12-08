@@ -29,3 +29,6 @@ syntax: regexp
 \.html$
 syntax: regexp
 \.md$
+syntax: glob
+README-*.png
+

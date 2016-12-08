@@ -20,9 +20,11 @@ Converts concentrations to amount of substance in mol.}
 
 
 \examples{
-data(chamberLoggerEx1s)
+#data(chamberLoggerEx1s)
 ds <- chamberLoggerEx1s
-  CO2_molarFlux <- ds$CO2_Avg   # just to have a column (here concentrations), the flux should be calculated properly before
+# here, just to have a column, take concentrations
+# aside fromt teh example, the flux should be calculated properly before
+  CO2_molarFlux <- ds$CO2_Avg   
 ds$CO2_flux <- corrFluxDensity(CO2_molarFlux, pressure=101*1000) #kPa converted to Pa	
   plot(ds$CO2_flux)
 }

@@ -122,7 +122,7 @@ calcClosedChamberFlux <- function(
 	res
 }
 attr(calcClosedChamberFlux,"ex") <- function(){
-	data(chamberLoggerEx1s)
+	#data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
     ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
 	conc <- ds$CO2_dry <- corrConcDilution(ds)
@@ -152,7 +152,8 @@ attr(calcClosedChamberFlux,"ex") <- function(){
 		lines( fitted(resLin$model) ~ times0Fit , col="grey" )
 		lines( fitted(resTanh$model) ~ times0Fit , col="purple" )
 		lines( fitted(resPoly$model) ~ times0Fit , col="blue" )
-		legend("topright", inset=c(0.02,0.02), legend=c("exp","lin","tanh","poly"), col=c("red","grey","purple","blue"), lty="solid")
+		legend("topright", inset=c(0.02,0.02), legend=c("exp","lin","tanh","poly")
+			, col=c("red","grey","purple","blue"), lty="solid")
 	}
 }
 
@@ -226,7 +227,7 @@ selectDataAfterLag <- function(
 	}
 }
 attr(selectDataAfterLag,"ex") <- function(){
-	data(chamberLoggerEx1s)
+	#data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
 	ds$CO2_dry <- corrConcDilution(ds)
 	#trace(selectDataAfterLag,recover)	#untrace(selectDataAfterLag)
@@ -299,7 +300,7 @@ regressFluxLinear <- function(
 	res
 }
 attr(regressFluxLinear,"ex") <- function(){
-	data(chamberLoggerEx1s)
+	#data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
 	conc <- ds$CO2_Avg
 	times <- ds$TIMESTAMP
@@ -338,7 +339,7 @@ regressFluxSquare <- function(
 	  res
 }
 attr(regressFluxSquare,"ex") <- function(){
-  data(chamberLoggerEx1s)
+  #data(chamberLoggerEx1s)
   ds <- chamberLoggerEx1s
   conc <- ds$CO2_dry <- corrConcDilution(ds)  
   times <- ds$TIMESTAMP
@@ -445,7 +446,7 @@ regressFluxExp <- function(
 			, model = nlmBest)	##<< the model-fit object (here of class gnls)
 }
 attr(regressFluxExp,"ex") <- function(){
-	data(chamberLoggerEx1s)
+	#data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
 	conc <- ds$CO2_dry <- corrConcDilution(ds)  
 	times <- ds$TIMESTAMP
@@ -542,7 +543,7 @@ regressFluxTanh <- function(
 			, model = nlmBest)	##<< the model-fit object (here of class gnls)
 }
 attr(regressFluxTanh,"ex") <- function(){
-	data(chamberLoggerEx1s)
+	#data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s[-(1:16),]
 	conc <- ds$CO2_dry <- corrConcDilution(ds)  
 	times <- ds$TIMESTAMP
@@ -592,7 +593,7 @@ sigmaBootLeverage <- function(
   c( sd=sd(zz, na.rm=TRUE), quantile(zz, probs, na.rm=TRUE) ) 
 }
 attr(sigmaBootLeverage,"ex") <- function(){
-	data(chamberLoggerEx1s)
+	#data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
   sigmaBootLeverage( ds$CO2_Avg, ds$TIMESTAMP )
 }

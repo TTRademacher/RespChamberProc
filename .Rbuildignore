@@ -3,10 +3,10 @@
 ^README\.Rmd$
 ^README\.md$
 ^README-.*\.png$
-^NEWS\.Rmd$          
 ^NEWS\.md$          
-vignettes/figure	
-vignettes/cache	
+^NEWS\.Rmd$          
+^vignettes/figure/.*$
+^vignettes/cache/.*$	
 ^scratch$
 ^tmp$
 ^.git$

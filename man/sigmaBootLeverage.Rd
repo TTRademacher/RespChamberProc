@@ -24,7 +24,7 @@
 
 \seealso{\code{\link{RespChamberProc}}}
 \examples{
-data(chamberLoggerEx1s)
+#data(chamberLoggerEx1s)
 ds <- chamberLoggerEx1s
   sigmaBootLeverage( ds$CO2_Avg, ds$TIMESTAMP )
 }

@@ -68,9 +68,11 @@ read81x <- function(
 	blockStarts <- grep("^Type", lines)				# starts of data blocks
 	summaryStarts <- grep("^CrvFitStatus", lines)	# starts of summary blocks (after each data block) 
 	setClass("myDate", where=globalenv())
-	setAs("character","myDate", function(from) as.POSIXct(from, format=formatTS, tz=tz), where=globalenv() )
+	setAs("character","myDate", function(from) 
+				as.POSIXct(from, format=formatTS, tz=tz), where=globalenv() )
 	fileInfo <- readLines(fName, n=nRowsFileInfo )
-	colNamesFile <- unlist(read.table(fName, header=FALSE, skip=nRowsFileInfo, nrows=1, sep=sep, na.strings=na.strings))
+	colNamesFile <- unlist(read.table(fName, header=FALSE, skip=nRowsFileInfo
+		, nrows=1, sep=sep, na.strings=na.strings))
 	colNamesFile <- colNamesFile[1:(length(colNamesFile)-1)]	# skip annotation collumn, not in data
 	colClasses = rep(NA, length(colNamesFile))	##<< see \code{link{read.table}}	
 	colClasses[colsTimeStamp] <- "myDate"

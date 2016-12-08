@@ -60,7 +60,7 @@ return value sdFlux is the maximum of those two components}
 
 \seealso{\code{\link{RespChamberProc}}}
 \examples{
-data(chamberLoggerEx1s)
+#data(chamberLoggerEx1s)
 ds <- chamberLoggerEx1s
     ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
 conc <- ds$CO2_dry <- corrConcDilution(ds)
@@ -90,6 +90,7 @@ resFit$stat[c("flux","sdFlux")]
 	lines( fitted(resLin$model) ~ times0Fit , col="grey" )
 	lines( fitted(resTanh$model) ~ times0Fit , col="purple" )
 	lines( fitted(resPoly$model) ~ times0Fit , col="blue" )
-	legend("topright", inset=c(0.02,0.02), legend=c("exp","lin","tanh","poly"), col=c("red","grey","purple","blue"), lty="solid")
+	legend("topright", inset=c(0.02,0.02), legend=c("exp","lin","tanh","poly")
+		, col=c("red","grey","purple","blue"), lty="solid")
 }
 }

@@ -15,7 +15,7 @@ corrConcDilution <- function(
   ### numeric vector (nrow ds):  concentration of CO2 per dry air [ppm]
 } 
 attr(corrConcDilution,"ex") <- function(){
-  data(chamberLoggerEx1s)
+  #data(chamberLoggerEx1s)
   ds <- chamberLoggerEx1s
   ds$CO2_dry <- corrConcDilution(ds)	
 }
@@ -37,9 +37,11 @@ corrFluxDensity <- function(
 	### numeric vector (nrow ds):  CO2 flux [mumol CO2 /s]
 } 
 attr(corrFluxDensity,"ex") <- function(){
-	data(chamberLoggerEx1s)
+	#data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
-  	CO2_molarFlux <- ds$CO2_Avg   # just to have a column (here concentrations), the flux should be calculated properly before
+	# here, just to have a column, take concentrations
+	# aside fromt teh example, the flux should be calculated properly before
+  	CO2_molarFlux <- ds$CO2_Avg   
 	ds$CO2_flux <- corrFluxDensity(CO2_molarFlux, pressure=101*1000) #kPa converted to Pa	
   	plot(ds$CO2_flux)
 }
@@ -56,7 +58,7 @@ corrFluxLeakage <- function(
 	### numeric vector (length conc): corrected concentration [Amount of substance]
 } 
 attr(corrFluxLeakage,"ex") <- function(){
-	data(chamberLoggerEx1s)
+	#data(chamberLoggerEx1s)
 	ds <- chamberLoggerEx1s
 	ds$CO2_leakC <- corrFluxLeakage(ds$CO2_Avg)	
 }
