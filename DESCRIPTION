@@ -8,5 +8,5 @@ Description: Processing data from respiration chambers.
 Depends: R (>= 3.0.0), methods
 Imports: changepoint, nlme, segmented, ggplot2, plyr
 Suggests: testthat
-License: GPL-2
+License: GPL (>= 3)
 LazyData: true
