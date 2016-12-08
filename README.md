@@ -4,17 +4,11 @@ output: github_document
 
 <!-- 
 README.md is generated from README.Rmd. Please edit that file
-knitr::knit("README.Rmd") 
+knit("README.Rmd") 
 -->
 
 
-```{r, echo = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.path = "README-"
-)
-```
+
 
 <!-- 
 [![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/logitnorm)](http://cran.r-project.org/package=logitnorm)
@@ -29,7 +23,8 @@ concentrations in a chamber.
 
 <!-- 
 ## Installation
-```{r, eval = FALSE}
+
+```r
 # From CRAN
 install.packages("logitnorm")
 
@@ -47,7 +42,8 @@ See the package vignettes for an introduction.
 A simple example estimates photosynthesis (negative CO2 flux into the
 light chamber) in units micromol/second from CO2 concentration data in ppm.
  
-```{r example}
+
+```r
 data(chamberLoggerEx1s)
 ds <- chamberLoggerEx1s
 ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
@@ -58,5 +54,9 @@ resFit <- calcClosedChamberFlux(ds
 		, volume = 1, area = 1						    # chamber dimensions m3 and m2
 )
 resFit$stat[c("flux","sdFlux")]
+#>      flux    sdFlux 
+#> -3.534763  0.708469
 plotResp(ds, resFit, label="Example Series")
 ```
+
+![plot of chunk example](README-example-1.png)
