@@ -110,6 +110,7 @@ subsetContiguous <- function(
 	ds						##<< data.frame of measurements 
 	,colTime="TIMESTAMP"	##<< column name that of time (POSIXct)
 	,colIndex="Collar"		##<< column name of index variable (factor or integer)
+	,colMeasure="CO2_dry"	##<< column name of the concentration measurement
 	,gapLength=12			##<< minimal length of a gap between subsets (seconds)
 	,minNRec=20				##<< minimum number of records within one contiguous subset
 	,minTime=60				##<< minimum length of time (in seconds) that a contiguous subsets covers
@@ -121,8 +122,11 @@ subsetContiguous <- function(
 	## The time series in logger data consists of several chunks of concentration measurments.
 	## In order to determine these chunks, either a change in an index variable (input by between the
 	## measurements) or a gap in time is used.
+	reqCols <- c(colTime,colIndex, colMeasure)
+	iMissingCols <- which(!(reqCols %in% names(ds)))
+	if( length(iMissingCols) ) stop("subsetContiguous: missing columns: ", paste(reqCols[iMissingCols],collapse=","))
 	timeDiff <- diff(as.numeric(ds[,colTime]))
-	iGaps <-  which( timeDiff > gapLength)   
+	iGaps <-  which( timeDiff > gapLength)
 	iCollarChanges <- which( diff(as.numeric(ds[,colIndex])) != 0 )
 	iChunks <- c( 1, sort(union(iCollarChanges, iGaps)), nrow(ds) ) 
 	dsChunksL <- lapply( 2:length(iChunks), function(i){
@@ -135,15 +139,15 @@ subsetContiguous <- function(
 	## \code{minTime} seconds are reported. Others are neglected.
 	#
 	#sapply( dsChunksL, nrow )
-	#sapply( dsChunkLs, function(dsi){ dsi$Collar[1] })
+	#sapply( dsChunkLs, function(dsi){ dsi[[colIndex]][1] })
 	#dsia <- dsChunksL[[4]]	
 	#dsia <- dsChunksL[[47]]	
 	dsChunksLClean <- do.call( rbind, lapply(dsChunksL, function(dsia){
-						collar <- dsia$Collar[1] 
-						dsi <- dsia[is.finite(dsia$CO2_dry),]
-						timeSec <- as.numeric(dsi$TIMESTAMP) - as.numeric( dsi$TIMESTAMP[1] )
-						#if( collar == indexNA || nrow(dsi) < minNRec || max(timeSec) < minTime || var(dsi$CO2_dry)==0  ){
-						if( collar == indexNA || nrow(dsi) < minNRec || max(timeSec) < minTime || fIsBadChunk(dsi)){
+						index <- dsia[[colIndex]][1] 
+						dsi <- dsia[is.finite(dsia[[colMeasure]]),]
+						timeSec <- as.numeric(dsi[[colTime]]) - as.numeric( dsi[[colTime]][1] )
+						#if( collar == indexNA || nrow(dsi) < minNRec || max(timeSec) < minTime || var(dsi[[colMeasure]])==0  ){
+						if( index == indexNA || nrow(dsi) < minNRec || max(timeSec) < minTime || fIsBadChunk(dsi)){
 							return( NULL )
 						}else return(dsi)
 					}))

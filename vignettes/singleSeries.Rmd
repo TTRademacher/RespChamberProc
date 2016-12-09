@@ -1,6 +1,6 @@
 <!--
 %\VignetteEngine{knitr}
-%\VignetteIndexEntry{DEGeb example: UStar estimation}
+%\VignetteIndexEntry{CO2 fluxes from Chamber CO2 concentrations}
 -->
 
 ```{r setup, include=FALSE}
@@ -26,7 +26,7 @@ CO2 fluxes from Chamber CO2 concentrations
 
 ```{r results='hide'}
 #isDevelopMode <- TRUE
-if(!exists("isDevelopMode")) library(REddyProc)
+if(!exists("isDevelopMode")) library(RespChamberProc)
 set.seed(0815)      # for reproducible results
 ```
 

@@ -12,6 +12,7 @@ calcClosedChamberFlux <- function(
 	,fRegressSelect = regressSelectPref1	 ##<< function to select the regression function based on fitting results. Signature and return must correspond to \code{\link{regressSelectPref1}} 
 	,concSensitivity=1		##<< measurement sensitivity of concentration. With concentration change below this sensitivity, only a linear model is fit
 	,maxLag = 50			##<< number of initial records to be screened for a breakpoint, i.e. the lag (higher for water vapour than for CO2)
+	,minTLag=0				##<< possibility to specify a minimum lag-time in seconds 
   	,debugInfo=list(		##<< rarely used controls, mostly for debugging
 			##describe<<
     	useOscarsLagDectect=FALSE	##<< using the changepoint method for lag detection
@@ -45,7 +46,7 @@ calcClosedChamberFlux <- function(
 	dslRes <- if( isTRUE(debugInfo$useOscarsLagDectect) ){
 	  dslRes <- selectDataAfterLagOscar(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed)
 	}else{
-    	selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed, maxLag=maxLag)
+    	selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed, maxLag=maxLag, minTLag=minTLag)
 	}
 	dsl <- dslRes$ds
 	timesOrig <- ds[,colTime]
@@ -97,11 +98,14 @@ calcClosedChamberFlux <- function(
 	## return value sdFlux is the maximum of those two components
 	#
 	# correct fluxes for density and express per chamber instead of per mol air, express per area
+	#chamberTemp <- ds[ dslRes$lagIndex,colTemp ]
+	# better take the median temperature, as sensor might be off at the exact timelag
+	chamberTemp <- median(ds[ dslRes$lagIndex,colTemp ], na.rm=TRUE)
 	fluxEstTotal = corrFluxDensity(fluxEst, volume = volume
-	                , temp = ds[ dslRes$lagIndex,colTemp ]
+	                , temp = chamberTemp
 	                , pressure = ds[ dslRes$lagIndex,colPressure ]) / area
 	leverageEstTotal = corrFluxDensity(leverageEst, volume = volume
-	                                   , temp = ds[ dslRes$lagIndex,colTemp ]
+	                                   , temp = chamberTemp
 	                                   , pressure = ds[ dslRes$lagIndex,colPressure ]) / area
 	#
 	#corrFluxDensity( dsl, vol=2)
@@ -191,12 +195,14 @@ selectDataAfterLag <- function(
 		,maxLag = 50			##<< number of initial records to be screened for a breakpoint, i.e. the lag
 		,tLagInitial=10			##<< the initial estimate of the length of the lag-phase
 		,minTimeDataAfterBreak=30	##<< number of minimum time (in seconds) left after breakpoint
+		,minTLag=0				##<< possibility to specify a minimum lag-time in seconds 
 ){
 	##seealso<< \code{\link{RespChamberProc}}
   	maxLagConstrained <- min(maxLag, nrow(ds))
 	times <- as.numeric(ds[,colTime])[1:maxLagConstrained]
 	times0 <- times - times[1]
-	iBreak <- 1 		# default no lag phase
+	iBreakMin <- min(which( times0 >= minTLag ))	
+	iBreak <- min(which( times0 >= minTLag ))	# default no or minimal lag phase
 	if( length(tLagFixed) && is.finite(tLagFixed) ){
 		iBreak <- min(which( times0 >= tLagFixed ))  
 	}else {
@@ -215,16 +221,16 @@ selectDataAfterLag <- function(
 		if( !inherits(o,"try-error") && AIC(o) < AIC(lm0) ){
 			iBreak <- min(which(times0 >= o$psi[1,2] ))
 		}
+		iBreak <- max(iBreakMin, iBreak)
 	}
-	##value<< A list with entries
+	# screen for minimum lag
 	isEnoughTimeInSecondsInRemainingData <- (times[length(times)] - times[iBreak]) >= minTimeDataAfterBreak
-	if( (iBreak < nrow(ds)) && isEnoughTimeInSecondsInRemainingData ){
-	  list(
+	if( !isEnoughTimeInSecondsInRemainingData ) iBreak <- iBreakMin
+	##value<< A list with entries
+	list(
 			lagIndex = iBreak    				##<< the index of the end of the lag period
 			,ds = ds[ (iBreak):nrow(ds), ]    	##<< the dataset ds without the lag-period (lagIndex included)
-	)} else {
-	  list(lagIndex = 1,ds = ds)    
-	}
+	)
 }
 attr(selectDataAfterLag,"ex") <- function(){
 	#data(chamberLoggerEx1s)
@@ -277,7 +283,6 @@ regressFluxLinear <- function(
 ){
 	##seealso<< \code{\link{regressFluxExp}}
 	##seealso<< \code{\link{RespChamberProc}}
-	
 	timesSec <- as.numeric(times) - as.numeric(times[1])
 	lm1 <- try( gls( conc ~ timesSec	 ), silent=TRUE)
 	lm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(lm1,"try-error")) lm1 else

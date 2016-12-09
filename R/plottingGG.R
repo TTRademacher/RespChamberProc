@@ -58,8 +58,12 @@ plotCampaignConcSeries <- function(
 			})
 	if( nzchar(fileName) ){
 		pdf(width=11.7,height=8.3,file=fileName)
-		lapply(plotList, print)
+		for( i in seq_along(plotList)){
+			cat(",",i)
+			print(plotList[[i]])
+		}
 		dev.off()
+		if( isVerbose ) message("printed plots to file ",fileName)
 	}
 	plotList
 }
