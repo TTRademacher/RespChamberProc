@@ -31,10 +31,6 @@ calcClosedChamberFlux <- function(
 	#
 	if( !( is.numeric(ds[,colTime]) ||  inherits(ds[,colTime], "POSIXct")) ) stop(
 				"Timestamp column must be given in seconds, i.e. must be of class POSIXct, integer, or numeric. But it was of class ",paste(class(ds[,colTime]),collapse=",") )
-	concRange <- diff( quantile(ds[,colConc], c(0.05,0.95), na.rm=TRUE ))
-	if( concRange <= concSensitivity ){
-		fRegress=c(lin=regressFluxLinear)
-	}
 	##details<< 
 	## The function \code{fRegress} must conform to \code{\link{regressFluxSquare}}, i.e.
 	## return a vector of length 2: the flux estimate and its standard deviation.
@@ -49,6 +45,10 @@ calcClosedChamberFlux <- function(
     	selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed, maxLag=maxLag, minTLag=minTLag)
 	}
 	dsl <- dslRes$ds
+	concRange <- diff( quantile(dsl[,colConc], c(0.05,0.95), na.rm=TRUE ))
+	if( concRange <= concSensitivity ){
+		fRegress=c(lin=regressFluxLinear)
+	}
 	timesOrig <- ds[,colTime]
 	times <- dsl[,colTime]
 	if( any(table(times) != 1) ){
@@ -109,7 +109,8 @@ calcClosedChamberFlux <- function(
 	                                   , pressure = ds[ dslRes$lagIndex,colPressure ]) / area
 	#
 	#corrFluxDensity( dsl, vol=2)
-	##value<< list with entries \code{stat}, and \code{model}.   
+	##value<< list with entries \code{stat}, and \code{model}.
+	resid <- residuals(mod)
 	res <- list(
 		 stat= c(	##<< numeric vector with the following entries:
 		flux = as.numeric(fluxEstTotal[1])			    ##<< the estimate of the CO2 flux into the chamber [mumol / m2 / s]
@@ -122,6 +123,8 @@ calcClosedChamberFlux <- function(
 		,sdFluxRegression = as.numeric(fluxEstTotal["sdFlux"]) ##<< the standard deviation of the flux by a single regression of CO2 flux
 		,sdFluxLeverage = as.numeric(leverageEstTotal["sd"])   ##<< the standard deviation of the flux by leverage of starting or end values of the time series
 		,iFRegress=as.numeric(iBest)					##<< index of the best (lowest AIC) regression function
+		,sdResid=sd(resid)
+		,iqrResid=IQR(resid)
 	), model = mod	)									##<< the model fit object
 	res
 }
@@ -202,7 +205,7 @@ selectDataAfterLag <- function(
 	times <- as.numeric(ds[,colTime])[1:maxLagConstrained]
 	times0 <- times - times[1]
 	iBreakMin <- min(which( times0 >= minTLag ))	
-	iBreak <- min(which( times0 >= minTLag ))	# default no or minimal lag phase
+	iBreak <- iBreakMin	# default no or minimal lag phase
 	if( length(tLagFixed) && is.finite(tLagFixed) ){
 		iBreak <- min(which( times0 >= tLagFixed ))  
 	}else {
@@ -286,9 +289,9 @@ regressFluxLinear <- function(
 	timesSec <- as.numeric(times) - as.numeric(times[1])
 	lm1 <- try( gls( conc ~ timesSec	 ), silent=TRUE)
 	lm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(lm1,"try-error")) lm1 else
-				gls( conc ~ timesSec
+				try(gls( conc ~ timesSec
 						,correlation=corAR1( 0.3, form = ~ timesSec)
-				)
+				),silent=TRUE)
 	nlmBest <- if( !inherits(lm1Auto,"try-error") && (AIC(lm1Auto) < AIC(lm1)) ) lm1Auto else lm1
 	corStruct <- nlmBest$modelStruct$corStruct
 	##value<< list with entries

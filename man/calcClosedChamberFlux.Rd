@@ -41,7 +41,7 @@ There are two kinds of uncertainty associated with the flux.
 The first comes from the uncertainty of the slope of concentration increase.
 The second comes from the leverage of starting and end points of the regression (estimated by a bootstrap)
 return value sdFlux is the maximum of those two components}
-\value{list with entries \code{stat}, and \code{model}.   
+\value{list with entries \code{stat}, and \code{model}.
 \item{stat}{numeric vector with the following entries:}
 \item{flux}{the estimate of the CO2 flux into the chamber [mumol / m2 / s]}
 \item{fluxMedian}{the median of the flux bootsrap estimates [mumol / m2 / s]}
