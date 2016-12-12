@@ -292,12 +292,19 @@ regressFluxLinear <- function(
 				try(gls( conc ~ timesSec
 						,correlation=corAR1( 0.3, form = ~ timesSec)
 				),silent=TRUE)
-	nlmBest <- if( !inherits(lm1Auto,"try-error") && (AIC(lm1Auto) < AIC(lm1)) ) lm1Auto else lm1
-	corStruct <- nlmBest$modelStruct$corStruct
+	nlmBest <- if( !inherits(lm1Auto,"try-error") && (AIC(lm1Auto) < AIC(lm1)) ) lm1Auto else lm1 
+	if( inherits(nlmBest,"try-error") ){
+		nlmBest <- lm(conc ~ timesSec)
+		corStruct <- NULL
+		sdFlux <- coef(summary(nlmBest))[2, 2]
+	} else {
+		corStruct <- nlmBest$modelStruct$corStruct
+		sdFlux = as.vector(sqrt(diag(vcov(nlmBest))[2]))	##<< standard deviation of flux
+	}
 	##value<< list with entries
 	res <- list( stat=c(	##<< numeric vector (2) with entries: flux, sdFlux, AIC, and autoCorr:
 			flux = as.vector(coefficients(nlmBest)[2])			##<< flux estimate at starting time 
-			,sdFlux = as.vector(sqrt(diag(vcov(nlmBest))[2]))	##<< standard deviation of flux
+			,sdFlux = sdFlux									##<< standard deviation of flux
 			,AIC=AIC(nlmBest)									##<< model fit diagnostics
 			,autoCorr = ##<< coefficient of autocorrelation
 					## or NA if model with autocorrelation could not be fitted or had higher AIC than model without autocorrelation
