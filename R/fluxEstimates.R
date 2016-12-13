@@ -40,11 +40,27 @@ calcClosedChamberFlux <- function(
 	#plot( ds[,colConc] ~ ds[,colTime] )
 	if( !length(names(fRegress)) ) names(fRegress) <- 1:length(fRegress)
 	dslRes <- if( isTRUE(debugInfo$useOscarsLagDectect) ){
-	  dslRes <- selectDataAfterLagOscar(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed)
-	}else{
-    	selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed, maxLag=maxLag, minTLag=minTLag)
+		dslRes <- selectDataAfterLagOscar(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed)
+	} else {
+    	dslRes <- selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed, maxLag=maxLag, minTLag=minTLag)
 	}
 	dsl <- dslRes$ds
+	if( !nrow(dsl) ) return(list(
+						stat= c(	##<< numeric vector with the following entries:
+								flux = NA_real_
+								,fluxMedian = NA 
+								,sdFlux = NA
+								,tLag = NA
+								,lagIndex = NA
+								,autoCorr = NA
+								,AIC= NA
+								,sdFluxRegression = NA
+								,sdFluxLeverage = NA
+								,iFRegress=NA
+								,sdResid=NA
+								,iqrResid=NA
+						), model = NULL	)									##<< the model fit object						
+	)
 	concRange <- diff( quantile(dsl[,colConc], c(0.05,0.95), na.rm=TRUE ))
 	if( concRange <= concSensitivity ){
 		fRegress=c(lin=regressFluxLinear)
@@ -204,11 +220,18 @@ selectDataAfterLag <- function(
   	maxLagConstrained <- min(maxLag, nrow(ds))
 	times <- as.numeric(ds[,colTime])[1:maxLagConstrained]
 	times0 <- times - times[1]
-	iBreakMin <- min(which( times0 >= minTLag ))	
-	iBreak <- iBreakMin	# default no or minimal lag phase
 	if( length(tLagFixed) && is.finite(tLagFixed) ){
-		iBreak <- min(which( times0 >= tLagFixed ))  
+		if( tLagFixed > tail(times0,1) ) return(list(
+				lagIndex = NA_integer_
+				,ds = ds[ FALSE, ,drop=FALSE]    	
+		))
+		iBreak <- min(which( times0 >= tLagFixed ))
 	}else {
+		if( minTLag > tail(times0,1) ) return(list(
+				lagIndex = NA_integer_
+				,ds = ds[ FALSE, ,drop=FALSE]    	
+		))
+		iBreak <- iBreakMin <- min(which( times0 >= minTLag ))	
 		obs <- ds[1:maxLagConstrained,colConc]
 		lm0 <- lm(obs ~ times0)
 	    o <-try( segmented(lm0, seg.Z= ~times0
@@ -225,14 +248,14 @@ selectDataAfterLag <- function(
 			iBreak <- min(which(times0 >= o$psi[1,2] ))
 		}
 		iBreak <- max(iBreakMin, iBreak)
+		# screen for minimum lag
+		isEnoughTimeInSecondsInRemainingData <- (times[length(times)] - times[iBreak]) >= minTimeDataAfterBreak
+		if( !isEnoughTimeInSecondsInRemainingData ) iBreak <- iBreakMin
 	}
-	# screen for minimum lag
-	isEnoughTimeInSecondsInRemainingData <- (times[length(times)] - times[iBreak]) >= minTimeDataAfterBreak
-	if( !isEnoughTimeInSecondsInRemainingData ) iBreak <- iBreakMin
 	##value<< A list with entries
 	list(
 			lagIndex = iBreak    				##<< the index of the end of the lag period
-			,ds = ds[ (iBreak):nrow(ds), ]    	##<< the dataset ds without the lag-period (lagIndex included)
+			,ds = ds[ (iBreak):nrow(ds), ,drop=FALSE]    	##<< the dataset ds without the lag-period (lagIndex included)
 	)
 }
 attr(selectDataAfterLag,"ex") <- function(){
