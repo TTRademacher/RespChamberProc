@@ -5,6 +5,8 @@ plotCampaignConcSeries <- function(
 		,varName="CO2_dry"	##<< variable to plot
 		,idCol="iChunk"		##<< collumn name of identifier of one time series
 		,timeCol="TIMESTAMP"##<< collumn name of the time collumn
+		,fText= 			##<< function(resFit) to add some text to the plot, by default the autocorrelation from fitting object
+				function(resFit){ if( is.finite(resFit$stat["autoCorr"])) sprintf("%.3f",resFit$stat["autoCorr"]) else ""}	
 		,qualityFlag=0		##<< vector of length nrow(ds) of a quality flag. For chunks where
 			## this flag is not 0, subplots are dimmed.
 		,plotsPerPage=64	##<< number of plots per page
@@ -50,7 +52,6 @@ plotCampaignConcSeries <- function(
 						scale_color_manual(values=colCodes, guide = FALSE) +
 						theme_bw(base_size=9) + 
 						theme(panel.grid.minor=element_blank())
-						
 				if( length(resL) ){
 					iiChunk <- which(names(resL) %in% idsPage)
 					resLi <- resL[iiChunk]
@@ -67,9 +68,12 @@ plotCampaignConcSeries <- function(
 											dsr
 										} else NULL
 									}))
+					tmp <- sapply(resLi, fText )
+					dfText <- data.frame(id=names(tmp), text=tmp, row.names = NULL)
 					p1 <- p1 + 
-							geom_vline( aes_string(xintercept="tLag"), col="darkgrey", linetype="dashed", data=dfLag ) +
-							geom_line( aes_string(y="fitted"), col="red", data=dfFitted ) +
+							geom_vline( data=dfLag, aes_string(xintercept="tLag"), col="darkgrey", linetype="dashed" ) +
+							geom_line( data=dfFitted, aes_string(y="fitted"), col="red"  ) +
+							geom_text( data=dfText, aes_string(label="text"), x=+Inf, y=-Inf, hjust=1.05, vjust=0) +
 							theme()
 				}
 				p1

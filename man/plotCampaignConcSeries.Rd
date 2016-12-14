@@ -2,16 +2,16 @@
 \alias{plotCampaignConcSeries}
 \title{plotCampaignConcSeries}
 \description{get a series of ggplots of the time series and its fits}
-\usage{plotCampaignConcSeries(ds, resL = NULL, varName = "CO2_dry", 
-    idCol = "iChunk", timeCol = "TIMESTAMP", qualityFlag = 0, 
-    plotsPerPage = 64, fileName = "", colIds = c(), 
-    ggplotList = c(), isVerbose = TRUE)}
+\usage{"\\nplotCampaignConcSeries(ds, resL = NULL, varName = \\"CO2_dry\\", idCol = \\"iChunk\\", timeCol = \\"TIMESTAMP\\", fText = function(resFit) {\\n    if (is.finite(resFit$stat[\\"autoCorr\\"])) \\n        sprintf(\\"\\\%.3f\\", resFit$stat[\\"autoCorr\\"])\\n    else \\"\\"\\n"}
+ qualityFlag = 0, plotsPerPage = 64, fileName = "", colIds = c(), ggplotList = c(), isVerbose = TRUE)
+}
 \arguments{
   \item{ds}{data frame to plot, with collumns \code{idCol}, \code{timeCol} and \code{varName}}
   \item{resL}{list with results of \code{\link{calcClosedChamberFlux}} for each id-subset in ds}
   \item{varName}{variable to plot}
   \item{idCol}{collumn name of identifier of one time series}
   \item{timeCol}{collumn name of the time collumn}
+  \item{fText}{function(resFit) to add some text to the plot, by default the autocorrelation from fitting object}
   \item{qualityFlag}{vector of length nrow(ds) of a quality flag. For chunks where
 this flag is not 0, subplots are dimmed.}
   \item{plotsPerPage}{number of plots per page}
