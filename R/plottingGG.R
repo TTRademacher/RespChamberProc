@@ -79,12 +79,9 @@ plotCampaignConcSeries <- function(
 										} else NULL
 									}))
 							#resFit <- resLi[[54]]
-							tmp <- sapply(resLi, fTextBR )
-							dfTextBR <- data.frame(id=names(tmp), text=tmp, row.names = NULL)
-							tmp <- sapply(resLi, fTextTL )
-							dfTextTL <- data.frame(id=names(tmp), text=tmp, row.names = NULL)
-							tmp <- sapply(resLi, fTextTR )
-							dfTextTR <- data.frame(id=names(tmp), text=tmp, row.names = NULL)
+							dfTextBR <- data.frame(id=names(resLi), text=sapply(resLi, fTextBR ), row.names = NULL)
+							dfTextTL <- data.frame(id=names(resLi), text=sapply(resLi, fTextTL ), row.names = NULL)
+							dfTextTR <- data.frame(id=names(resLi), text=sapply(resLi, fTextTR ), row.names = NULL)
 							p1 <- p1 + 
 							geom_vline( data=dfLag, aes_string(xintercept="tLag"), col="darkgrey", linetype="dashed", na.rm=TRUE ) +
 							geom_line( data=dfFitted, aes_string(y="fitted"), col="red", na.rm=TRUE  ) +
