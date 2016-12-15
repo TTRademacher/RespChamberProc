@@ -5,16 +5,21 @@ plotCampaignConcSeries <- function(
 		,varName="CO2_dry"	##<< variable to plot
 		,idCol="iChunk"		##<< collumn name of identifier of one time series
 		,timeCol="TIMESTAMP"##<< collumn name of the time collumn
-		,fText= 			##<< function(resFit) to add some text to the plot, by default the autocorrelation from fitting object
-				function(resFit){ if( is.finite(resFit$stat["autoCorr"])) sprintf("%.3f",resFit$stat["autoCorr"]) else ""}	
 		,qualityFlag=0		##<< vector of length nrow(ds) of a quality flag. For chunks where
 			## this flag is not 0, subplots are dimmed.
+		,fTextBR=NULL 		##<< function(resFit) to add some text to the bottom right of the plot, by default the rSquared from fitting object
+		,fTextTL=NULL 		##<< function(resFit) to add some text to the top left of the plot, by default the autocorrelation from fitting object
+		,fTextTR=NULL 		##<< function(resFit) to add a second text to the top right of the plot, by default the provided quality flag, where it is not zero
 		,plotsPerPage=64	##<< number of plots per page
 		,fileName=""		##<< if non-zero length string, the fileName where all plots are printed to  #paste0(varName,".pdf")
 		,colIds = c()
 		,ggplotList=c()		##<< list added to each ggplot.
 		,isVerbose=TRUE
 ){
+	# do not clutter the function declaration with these long defaults, better assing in body: 
+	if( !length(fTextBR) ) fTextBR <- function(resFit){ if( is.finite(resFit$stat["r2"])) format(resFit$stat["r2"],digits=2) else ""} 
+	if( !length(fTextTL) ) fTextTL <- function(resFit){ if( is.finite(resFit$stat["autoCorr"])) format(resFit$stat["autoCorr"],digits=2) else ""} 
+	if( !length(fTextTR) ) fTextTR <- function(resFit){ if( length(resFit$qf) && resFit$qf != 0 ) as.character(resFit$qf) else ""}  
 	#iCamp <- 1
 	#dss <- subset(ds, campaign==1 & Chamber==1)
 	N <- length(unique(ds[[idCol]]))
@@ -29,13 +34,16 @@ plotCampaignConcSeries <- function(
 	} else {
 		ds$qf <- factor(0)
 	}
-	colCodes <- rep("lightgray", length(unique(qualityFlag)))
+	uniqueQf <- unique(qualityFlag)
+	colCodes <- rep("lightgray", length(uniqueQf))
 	colCodes[1] <- "black"
+	colCodes[uniqueQf==10] <- "darkgrey"
 	#(as.numeric(unique(ds$id))-1)%/%plotsPerPage+1
 	dsp <- cbind(iPage= factor((as.numeric(ds$id)-1)%/%plotsPerPage+1), ds)
 	message(paste("Number of pages (each ",plotsPerPage," plots): ", length(unique(dsp$iPage))), sep="" )
 	dss <- dsp[dsp$iPage==1,]
 	#ds$H2O_dry <- corrConcDilution(ds, colConc = "H2O_LI840", colVapour = "H2O_LI840"); varName <- "H2O_dry"
+	if( length(resL) ) resL <- structure(lapply( seq_along(resL), function(i){ resLi <- resL[[i]]; resLi$qf <- qualityFlag[i]; resLi }), names=names(resL))
 	plotList <- dlply(dsp, "iPage", function(dss){
 				idsPage <- unique(dss$id)
 				if(isVerbose) message(paste(idsPage, collapse=","))
@@ -47,11 +55,13 @@ plotCampaignConcSeries <- function(
 									times0 <- times - times[1]
 								}))
 				#dss <- dsc
-				p1 <- ggplot( dss, aes_string(x="times0", y=varName) ) + geom_point(shape=1, aes_string(col="qf")) + 
+				p1 <- ggplot( dss, aes_string(x="times0", y=varName) ) + 
+						geom_point(shape=1, aes_string(col="qf"), na.rm=TRUE) + 
 						facet_wrap( ~id, scales="free") +
 						scale_color_manual(values=colCodes, guide = FALSE) +
 						theme_bw(base_size=9) + 
-						theme(panel.grid.minor=element_blank())
+						theme(panel.grid=element_blank())
+						#theme(panel.grid.minor=element_blank())
 				if( length(resL) ){
 					iiChunk <- which(names(resL) %in% idsPage)
 					resLi <- resL[iiChunk]
@@ -68,12 +78,19 @@ plotCampaignConcSeries <- function(
 											dsr
 										} else NULL
 									}))
-					tmp <- sapply(resLi, fText )
-					dfText <- data.frame(id=names(tmp), text=tmp, row.names = NULL)
-					p1 <- p1 + 
-							geom_vline( data=dfLag, aes_string(xintercept="tLag"), col="darkgrey", linetype="dashed" ) +
-							geom_line( data=dfFitted, aes_string(y="fitted"), col="red"  ) +
-							geom_text( data=dfText, aes_string(label="text"), x=+Inf, y=-Inf, hjust=1.05, vjust=0) +
+							#resFit <- resLi[[54]]
+							tmp <- sapply(resLi, fTextBR )
+							dfTextBR <- data.frame(id=names(tmp), text=tmp, row.names = NULL)
+							tmp <- sapply(resLi, fTextTL )
+							dfTextTL <- data.frame(id=names(tmp), text=tmp, row.names = NULL)
+							tmp <- sapply(resLi, fTextTR )
+							dfTextTR <- data.frame(id=names(tmp), text=tmp, row.names = NULL)
+							p1 <- p1 + 
+							geom_vline( data=dfLag, aes_string(xintercept="tLag"), col="darkgrey", linetype="dashed", na.rm=TRUE ) +
+							geom_line( data=dfFitted, aes_string(y="fitted"), col="red", na.rm=TRUE  ) +
+							geom_text( data=dfTextBR, aes_string(label="text"), x=+Inf, y=-Inf, hjust=1.05, vjust=0, na.rm=TRUE) +
+							geom_text( data=dfTextTL, aes_string(label="text"), x=-Inf, y=+Inf, hjust=0, vjust=1, na.rm=TRUE) +
+							geom_text( data=dfTextTR, aes_string(label="text"), x=+Inf, y=+Inf, hjust=1, vjust=1, na.rm=TRUE) +
 							theme()
 				}
 				p1

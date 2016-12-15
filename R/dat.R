@@ -7,10 +7,11 @@ readDat <- function(
 	,...					##<< further arguments to
 	,colClasses = rep(NA, ncol(colInfo))	##<< see \code{link{read.table}}
 	,colsTimeStamp=1		##<< integer vector: colums with time stamp column (will be set to POSIXct
-	,formatTS="%Y-%m-%d %H:%M:%S"	##<< format of the timestamp columns, see \code{\link{strptime}}, e.g. 
+	,formatTS=NULL		    ##<< format string of the timestamp columns, see \code{\link{strptime}}, e.g. 
 	,tz="UTC"				##<< specify a time zone when converting to POSIXct, default: current local e.g CET, UTC
 	,na.strings=c('','NA','NAN','"NAN"')
 ){
+	if( !length(formatTS) ) formatTS <- "%Y-%m-%d %H:%M:%S"	# cannot put "%" in declaration with inlinedocs
 	##details<< 
 	## Assumes that there
 	setClass("myDate", where=globalenv())
@@ -56,7 +57,7 @@ read81x <- function(
 		,sep="\t"				##<< column separator
 		,...					##<< further arguments to \code{\link{readDat}}
 		,colsTimeStamp=3		##<< integer vector: colums with time stamp column (will be set to POSIXct
-		,formatTS="%Y-%m-%d %H:%M:%S"	##<< format of the timestamp columns, see \code{\link{strptime}}, e.g. 
+		,formatTS=NULL			##<< format of the timestamp columns, see \code{\link{strptime}}, e.g. 
 		,tz="UTC"				##<< specify a time zone when converting to POSIXct, default: current local e.g CET, UTC
 		,na.strings=c('','NA','NAN','"NAN"')
 ){
@@ -64,6 +65,7 @@ read81x <- function(
 	## version of \code{\link{readDat}} with adjusted defaults
 	#
 	# find the beginning of data blocks and of summary information
+	if( !length(formatTS) ) formatTS <- "%Y-%m-%d %H:%M:%S"
 	lines <- readLines(fName)
 	blockStarts <- grep("^Type", lines)				# starts of data blocks
 	summaryStarts <- grep("^CrvFitStatus", lines)	# starts of summary blocks (after each data block) 

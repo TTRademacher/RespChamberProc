@@ -53,7 +53,8 @@ return value sdFlux is the maximum of those two components}
 \item{sdFluxRegression}{the standard deviation of the flux by a single regression of CO2 flux}
 \item{sdFluxLeverage}{the standard deviation of the flux by leverage of starting or end values of the time series}
 \item{iFRegress}{index of the best (lowest AIC) regression function}
-\item{model}{the model fit object
+\item{r2}{coefficient of determination}
+\item{model}{the model fit object (based on subset with finite measure and time)
 }}
 
 \author{Thomas Wutzler, Oscar Perez Priego}

@@ -45,22 +45,13 @@ calcClosedChamberFlux <- function(
     	dslRes <- selectDataAfterLag(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed, maxLag=maxLag, minTLag=minTLag)
 	}
 	dsl <- dslRes$ds
-	if( !nrow(dsl) ) return(list(
-						stat= c(	##<< numeric vector with the following entries:
-								flux = NA_real_
-								,fluxMedian = NA 
-								,sdFlux = NA
-								,tLag = NA
-								,lagIndex = NA
-								,autoCorr = NA
-								,AIC= NA
-								,sdFluxRegression = NA
-								,sdFluxLeverage = NA
-								,iFRegress=NA
-								,sdResid=NA
-								,iqrResid=NA
-						), model = NULL	)									##<< the model fit object						
-	)
+	# constrain to finite records for fitting
+	dsl <- dsl[ is.finite(dsl[[colConc]]) & is.finite(dsl[[colTime]]),,drop=FALSE]
+	retEntries <- c("flux", "fluxMedian", "sdFlux", "tLag", "lagIndex", "autoCorr"
+			,"AIC","sdFluxRegression","sdFluxLeverage", "iFRegress","sdResid","iqrResid","r2")
+	retEmpty <- list( stat=structure(rep(NA, length(retEntries)), names=retEntries )
+			,model=NULL)
+	if( !nrow(dsl) ) return(retEmpty)
 	concRange <- diff( quantile(dsl[,colConc], c(0.05,0.95), na.rm=TRUE ))
 	if( concRange <= concSensitivity ){
 		fRegress=c(lin=regressFluxLinear)
@@ -90,9 +81,7 @@ calcClosedChamberFlux <- function(
 	if( !length(iBest) ){
 		msg <- "calcClosedChamberFlux: could not fit any of the specified functions to the concentration dataset"
 		if(isTRUE(debugInfo$isStopOnError)) stop(msg) else warning(msg)
-		res <- list( stat=structure(rep(NA, 10), names=c("flux", "fluxMedian", "sdFlux", "tLag", "lagIndex", "autoCorr"
-											,"AIC","sdFluxRegression","sdFluxLeverage", "iFRegress") )
-					,model=NULL)
+		res <- retEmpty
 		res$stat["tLag"] <- tLag		                                ##<< time of lag phase in seconds
 		res$stat["lagIndex"] <- dslRes$lagIndex 
 		return(res)
@@ -141,8 +130,9 @@ calcClosedChamberFlux <- function(
 		,iFRegress=as.numeric(iBest)					##<< index of the best (lowest AIC) regression function
 		,sdResid=sd(resid)
 		,iqrResid=IQR(resid)
-	), model = mod	)									##<< the model fit object
-	res
+		,r2= 1-sum(resid^2)/sum((dsl[[colConc]]-mean(dsl[[colConc]],na.rm=TRUE))^2)	##<< coefficient of determination
+	), model = mod	)									##<< the model fit object (based on subset with finite measure and time)
+	return(res)
 }
 attr(calcClosedChamberFlux,"ex") <- function(){
 	#data(chamberLoggerEx1s)
@@ -310,7 +300,8 @@ regressFluxLinear <- function(
 	##seealso<< \code{\link{regressFluxExp}}
 	##seealso<< \code{\link{RespChamberProc}}
 	timesSec <- as.numeric(times) - as.numeric(times[1])
-	lm1 <- try( gls( conc ~ timesSec	 ), silent=TRUE)
+	#plot(conc ~ timesSec)
+	lm1 <- try( gls(conc ~ timesSec), silent=TRUE)
 	lm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(lm1,"try-error")) lm1 else
 				try(gls( conc ~ timesSec
 						,correlation=corAR1( 0.3, form = ~ timesSec)
@@ -506,7 +497,9 @@ regressFluxTanh <- function(
 ){
 	##seealso<< \code{\link{regressFluxExp}}
 	##seealso<< \code{\link{RespChamberProc}}
-	#
+	##details<< 
+	## For efficiency reasons, does not check for missing values (NA).
+	## The caller must provide conc and times all finite.
 	timesSec <- as.numeric(times) - as.numeric(times[1])
 	fluxLin <- coefficients(lm(conc ~ timesSec ))[2]
 	if( !length(start) ){
