@@ -29,13 +29,13 @@ plotCampaignConcSeries <- function(
 	if( length(qualityFlag) != N ) warning("provided quality flag with different length than than number of measurement cycles in data.")
 	if( length(resL) ){
 		if( length(resL) != N ) warning("provided fitting results with different length than number of measurement cycles in data.")
-		dsQf <- data.frame(id=names(resL), qf=factor(qualityFlag))
+		dsQf <- data.frame(id=names(resL), qf=factor(qualityFlag))	# factor to get discreate color scale
 		ds <- merge(ds, dsQf)
 	} else {
 		ds$qf <- factor(0)
 	}
-	uniqueQf <- unique(qualityFlag)
-	colCodes <- rep("lightgray", length(uniqueQf))
+	ds <- ds[ is.finite(ds[[varName]]),,drop=FALSE]
+	colCodes <- rep("lightgray", length(levels(ds$qf)) )
 	colCodes[1] <- "black"
 	#colCodes[uniqueQf==10] <- "darkgrey"
 	#(as.numeric(unique(ds$id))-1)%/%plotsPerPage+1
@@ -44,6 +44,7 @@ plotCampaignConcSeries <- function(
 	dss <- dsp[dsp$iPage==1,]
 	#ds$H2O_dry <- corrConcDilution(ds, colConc = "H2O_LI840", colVapour = "H2O_LI840"); varName <- "H2O_dry"
 	if( length(resL) ) resL <- structure(lapply( seq_along(resL), function(i){ resLi <- resL[[i]]; resLi$qf <- qualityFlag[i]; resLi }), names=names(resL))
+	#dss <- subset(dsp, iPage==16)
 	plotList <- dlply(dsp, "iPage", function(dss){
 				idsPage <- unique(dss$id)
 				if(isVerbose) message(paste(idsPage, collapse=","))
@@ -60,15 +61,16 @@ plotCampaignConcSeries <- function(
 						facet_wrap( ~id, scales="free") +
 						scale_color_manual(values=colCodes, guide = FALSE) +
 						theme_bw(base_size=9) + 
-						theme(panel.grid=element_blank())
 						#theme(panel.grid.minor=element_blank())
+						theme(panel.grid=element_blank())
 				if( length(resL) ){
 					iiChunk <- which(names(resL) %in% idsPage)
 					resLi <- resL[iiChunk]
 					# resCalc <- resLi[[1]]
 					dfLag <- data.frame( id= names(resLi), tLag=sapply( resLi, function(resCalc){
-										if( !inherits(resCalc,"try-error") && length(resCalc$stat) )	resCalc$stat["tLag"] else NA_real_	
+										if( !inherits(resCalc,"try-error") && length(resCalc$stat) ) resCalc$stat["tLag"] else NA_real_	
 									}))
+					if( !is.numeric(dfLag$tLag)) dfLag$tLag <- as.numeric(dfLag$tLag) 
 					#idi <- names(resLi)[1]
 					dfFitted <- do.call( rbind, lapply( names(resLi), function(idi){
 										if( !inherits(resLi[[idi]],"try-error") && length(resLi[[idi]]$model) ){
@@ -78,17 +80,17 @@ plotCampaignConcSeries <- function(
 											dsr
 										} else NULL
 									}))
-							#resFit <- resLi[[54]]
-							dfTextBR <- data.frame(id=names(resLi), text=sapply(resLi, fTextBR ), row.names = NULL)
-							dfTextTL <- data.frame(id=names(resLi), text=sapply(resLi, fTextTL ), row.names = NULL)
-							dfTextTR <- data.frame(id=names(resLi), text=sapply(resLi, fTextTR ), row.names = NULL)
-							p1 <- p1 + 
-							geom_vline( data=dfLag, aes_string(xintercept="tLag"), col="darkgrey", linetype="dashed", na.rm=TRUE ) +
-							geom_line( data=dfFitted, aes_string(y="fitted"), col="red", na.rm=TRUE  ) +
-							geom_text( data=dfTextBR, aes_string(label="text"), x=+Inf, y=-Inf, hjust=1.05, vjust=0, na.rm=TRUE) +
-							geom_text( data=dfTextTL, aes_string(label="text"), x=-Inf, y=+Inf, hjust=0, vjust=1, na.rm=TRUE) +
-							geom_text( data=dfTextTR, aes_string(label="text"), x=+Inf, y=+Inf, hjust=1, vjust=1, na.rm=TRUE) +
-							theme()
+					#resFit <- resLi[[54]]
+					dfTextBR <- data.frame(id=names(resLi), text=sapply(resLi, fTextBR ), row.names = NULL)
+					dfTextTL <- data.frame(id=names(resLi), text=sapply(resLi, fTextTL ), row.names = NULL)
+					dfTextTR <- data.frame(id=names(resLi), text=sapply(resLi, fTextTR ), row.names = NULL)
+					p1 <- p1 + 
+					geom_vline( data=dfLag, aes_string(xintercept="tLag"), col="darkgrey", linetype="dashed", na.rm=TRUE ) +
+					{if( length(dfFitted)) geom_line( data=dfFitted, aes_string(y="fitted"), col="red", na.rm=TRUE  ) else c() } +
+					geom_text( data=dfTextBR, aes_string(label="text"), x=+Inf, y=-Inf, hjust=1.05, vjust=0, na.rm=TRUE) +
+					geom_text( data=dfTextTL, aes_string(label="text"), x=-Inf, y=+Inf, hjust=0, vjust=1, na.rm=TRUE) +
+					geom_text( data=dfTextTR, aes_string(label="text"), x=+Inf, y=+Inf, hjust=1, vjust=1, na.rm=TRUE) +
+					theme()
 				}
 				p1
 			})
