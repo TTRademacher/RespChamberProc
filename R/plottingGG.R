@@ -37,7 +37,7 @@ plotCampaignConcSeries <- function(
 	uniqueQf <- unique(qualityFlag)
 	colCodes <- rep("lightgray", length(uniqueQf))
 	colCodes[1] <- "black"
-	colCodes[uniqueQf==10] <- "darkgrey"
+	#colCodes[uniqueQf==10] <- "darkgrey"
 	#(as.numeric(unique(ds$id))-1)%/%plotsPerPage+1
 	dsp <- cbind(iPage= factor((as.numeric(ds$id)-1)%/%plotsPerPage+1), ds)
 	message(paste("Number of pages (each ",plotsPerPage," plots): ", length(unique(dsp$iPage))), sep="" )

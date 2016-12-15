@@ -51,7 +51,7 @@ calcClosedChamberFlux <- function(
 			,"AIC","sdFluxRegression","sdFluxLeverage", "iFRegress","sdResid","iqrResid","r2")
 	retEmpty <- list( stat=structure(rep(NA, length(retEntries)), names=retEntries )
 			,model=NULL)
-	if( !nrow(dsl) ) return(retEmpty)
+	if( nrow(dsl) < 8L ) return(retEmpty)
 	concRange <- diff( quantile(dsl[,colConc], c(0.05,0.95), na.rm=TRUE ))
 	if( concRange <= concSensitivity ){
 		fRegress=c(lin=regressFluxLinear)
@@ -310,9 +310,10 @@ regressFluxLinear <- function(
 	if( inherits(nlmBest,"try-error") ){
 		nlmBest <- lm(conc ~ timesSec)
 		corStruct <- NULL
-		sdFlux <- coef(summary(nlmBest))[2, 2]
+		coefSummary <- coef(summary(nlmBest))	# may have only one row if slope is NA 
+		sdFlux <- if( nrow(coefSummary) >= 2) coefSummary[2, 2] else NA
 	} else {
-		corStruct <- nlmBest$modelStruct$corStruct
+		corStruct <- if( inherits(nlmBest,"gls")) nlmBest$modelStruct$corStruct else NULL
 		sdFlux = as.vector(sqrt(diag(vcov(nlmBest))[2]))	##<< standard deviation of flux
 	}
 	##value<< list with entries
