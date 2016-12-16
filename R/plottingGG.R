@@ -73,13 +73,16 @@ plotCampaignConcSeries <- function(
 					if( !is.numeric(dfLag$tLag)) dfLag$tLag <- as.numeric(dfLag$tLag) 
 					#idi <- names(resLi)[1]
 					dfFitted <- do.call( rbind, lapply( names(resLi), function(idi){
-										if( !inherits(resLi[[idi]],"try-error") && length(resLi[[idi]]$model) ){
-											dsr <- data.frame( id=idi, fitted=fitted(resLi[[idi]]$model))
-											times0 <- dss[dss$id==idi,"times0"]
-											dsr$times0 <- times0[times0 >= dfLag$tLag[dfLag$id==idi]][1:nrow(dsr)]
-											dsr
-										} else NULL
-									}))
+							if( !inherits(resLi[[idi]],"try-error") && length(resLi[[idi]]$model) ){
+								#dssIdi <- dss[dss$id==idi,,drop=FALSE]	
+								#dssIdi <- dssIdi[is.finite(dssIdi[[varName]]),,drop=FALSE] # model fitted only on finite subset
+								dsr <- data.frame( id=idi
+									, fitted=fitted(resLi[[idi]]$model)
+									, times0 = dfLag$tLag[dfLag$id==idi] + resLi[[idi]]$times
+								)
+								dsr
+							} else NULL
+						}))
 					#resFit <- resLi[[54]]
 					dfTextBR <- data.frame(id=names(resLi), text=sapply(resLi, fTextBR ), row.names = NULL)
 					dfTextTL <- data.frame(id=names(resLi), text=sapply(resLi, fTextTL ), row.names = NULL)

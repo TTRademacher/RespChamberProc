@@ -8,7 +8,7 @@
   \item{conc}{numeric vector of CO2 concentrations []}
   \item{times}{times of conc measurements	[seconds]}
   \item{start}{numeric vector of starting parameters. May provide from last bootstrap to speed up fitting}
-  \item{cSatFac}{Position of the initial saturation (0 start, 1 end, >1 outside measured range)}
+  \item{cSatFac}{Position of the initial estimate of saturation (0 start, 1 end, >1 outside measured range)}
   \item{tryAutoCorr}{set to FALSE to not try to fit model with autocorrelation}
 }
 \details{For efficiency reasons, does not check for missing values (NA).

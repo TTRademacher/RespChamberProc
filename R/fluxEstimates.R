@@ -131,7 +131,9 @@ calcClosedChamberFlux <- function(
 		,sdResid=sd(resid)
 		,iqrResid=IQR(resid)
 		,r2= 1-sum(resid^2)/sum((dsl[[colConc]]-mean(dsl[[colConc]],na.rm=TRUE))^2)	##<< coefficient of determination
-	), model = mod	)									##<< the model fit object (based on subset with finite measure and time)
+	)
+	, times = fluxEstL[[iBest]]$times					##<< predictor times for the model fit (excluding and possibly first record)
+	, model = mod	)									##<< the model fit object (based on subset with finite measure and time)
 	return(res)
 }
 attr(calcClosedChamberFlux,"ex") <- function(){
@@ -293,7 +295,7 @@ selectDataAfterLagOscar <- function(
 regressFluxLinear <- function(
 		### Estimate the initial flux by linear regression
 		conc	  ##<< numeric vector of CO2 concentrations []
-		,times	##<< times of conc measurements	[seconds]
+		,times		##<< times of conc measurements	[seconds]
 		,start=c()	##<< numeric vector of starting parameters. May provide from last bootstrap to speed up fitting  
 		,tryAutoCorr=TRUE	##<< set to FALSE to not try to fit model with autocorrelation
 ){
@@ -326,7 +328,8 @@ regressFluxLinear <- function(
 					# see ?nlme:::coef.corAR1
 					if( length(corStruct) ) as.numeric(coef(corStruct, unconstrained=FALSE)) else NA
 		)
-	, model = nlmBest)	##<< the model-fit object (here of class gls)
+		, times = timesSec		##<< used predictor vector, can be used for return for plotting
+		, model = nlmBest)	##<< the model-fit object (here of class gls)
 	res
 }
 attr(regressFluxLinear,"ex") <- function(){
@@ -365,6 +368,7 @@ regressFluxSquare <- function(
 							  ## or NA if model with autocorrelation could not be fitted or had higher AIC than model without autocorrelation
 							  if( length(corStruct) ) as.numeric(coef(corStruct, unconstrained=FALSE)) else NA
 			  )
+			  , times = timesSec		##<< used predictor vector, can be used for return for plotting
 			  , model = nlmBest)	##<< the model-fit object (here of class gls)
 	  res
 }
@@ -473,6 +477,7 @@ regressFluxExp <- function(
 										, AIC = NA
 										,autoCorr =  NA 
 								)
+			, times = timesSec	##<< used predictor vector, can be used for return for plotting
 			, model = nlmBest)	##<< the model-fit object (here of class gnls)
 }
 attr(regressFluxExp,"ex") <- function(){
@@ -493,7 +498,7 @@ regressFluxTanh <- function(
 		conc	  ##<< numeric vector of CO2 concentrations []
 		,times	  ##<< times of conc measurements	[seconds]
 		,start=c()	##<< numeric vector of starting parameters. May provide from last bootstrap to speed up fitting  
-		,cSatFac=2  ##<< Position of the initial saturation (0 start, 1 end, >1 outside measured range)
+		,cSatFac=2  ##<< Position of the initial estimate of saturation (0 start, 1 end, >1 outside measured range)
 		,tryAutoCorr=TRUE	##<< set to FALSE to not try to fit model with autocorrelation
 ){
 	##seealso<< \code{\link{regressFluxExp}}
@@ -527,22 +532,43 @@ regressFluxTanh <- function(
 	#lines( (tanh(timesSec*-coefficients(nlm1)[1]/coefficients(nlm1)[3])+1)*coefficients(nlm1)[3] - coefficients(nlm1)[2])  # initial in concP range
 	# deprecated: use nlsLM from minpack.lm to switch between Newten and Levenberg, avoid singular gradient in near-linear cases
 	# http://www.r-bloggers.com/a-better-nls/
-	nlm1 <- try( 
-			if( fluxLin < 0 ){
-				nlm1 <- suppressWarnings(gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
-					,start = if(length(start)) start else list(s=s0, cSat = cSat0, c0 = c00)
-					,params= c(s+cSat+c0~1)
-					,correlation=NULL
-				))
-			} else {
-				# increasing concentrations
-				nlm1 <- suppressWarnings(gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
-					,start = if(length(start)) start else list(s=-s0, cSat = cSat0, c0 = c00)
-					,params= c(s+cSat+c0~1)
-					,correlation=NULL
-				))
-			}
-	, silent=TRUE)
+	concOut <- conc[-1]
+	timesSecOut <- timesSec[-1]
+	if( fluxLin > 0 ){
+		nlm1 <- nlmNoOut <- try(suppressWarnings(gnls( conc ~   (tanh(timesSec*s/c0)-1)*c0 + cSat 
+			,start = if(length(start)) start else list(s=s0, cSat = cSat0, c0 = c00)
+			,params= c(s+cSat+c0~1)
+			,correlation=NULL
+		)), silent=TRUE)
+		# fit without the first obs
+		nlmOut <- try(suppressWarnings(gnls( concOut ~   (tanh(timesSecOut*s/c0)-1)*c0 + cSat 
+						,start = if(length(start)) start else list(s=s0, cSat = cSat0, c0 = c00)
+						,params= c(s+cSat+c0~1)
+						,correlation=NULL
+				)), silent=TRUE) 
+	} else {
+		nlm1 <- nlmNoOut <- try(suppressWarnings(gnls( conc ~  (tanh(timesSec*s/c0)+1)*c0 - cSat
+			,start = if(length(start)) start else list(s=-s0, cSat = cSat0, c0 = c00)
+			,params= c(s+cSat+c0~1)
+			,correlation=NULL
+		)), silent=TRUE)
+		# fit without the first obs
+		nlmOut <- try(suppressWarnings(gnls( concOut ~  (tanh(timesSecOut*s/c0)+1)*c0 - cSat
+				,start = if(length(start)) start else list(s=-s0, cSat = cSat0, c0 = c00)
+				,params= c(s+cSat+c0~1)
+				,correlation=NULL
+		)), silent=TRUE)
+	}
+	##detail<< 
+	## The tanh fit is very prone to a very low first records. Hence also try to fit without the first record
+	## and if this fit is significantly better, use it instead
+	outNrecRatio <- (length(conc)-1)/length(conc)
+	isOmittingFirstRec <- ( !inherits(nlm1,"try-error") && !inherits(nlmOut,"try-error") && 
+			(sum(resid(nlmOut)^2) < sum(resid(nlm1)^2)*outNrecRatio -2 ))
+	if(isOmittingFirstRec){
+		#message("omitting first record")
+		nlm1 <- nlmOut
+	}	
 	nlm1Auto <- if( !isTRUE(tryAutoCorr) || inherits(nlm1,"try-error") ) nlm1 else try(
 						suppressWarnings(update(nlm1, correlation=corAR1( 0.3, form = ~ timesSec) 
 								,control=gnlsControl(nlsTol=0.01)	# sometimes not fitting, here already good starting values
@@ -561,7 +587,7 @@ regressFluxTanh <- function(
 						c(	
 								flux = as.vector(coefficients(nlmBest)[1])			##<< flux estimate at starting time 
 								,sdFlux = as.vector(sqrt(diag(vcov(nlmBest))[1]))	##<< standard deviation of flux
-								,AIC=AIC(nlmBest)									##<< model fit diagnostics
+								,AIC=if(!isOmittingFirstRec) AIC(nlmBest) else AIC(nlmBest)/(outNrecRatio)	##<< model fit diagnostics
 								,autoCorr = ##<< coefficient of autocorrelation
 										## or NA if model with autocorrelation could not be fitted or had higher AIC than model without autocorrelation
 										if( length(corStruct) ) as.numeric(coef(corStruct, unconstrained=FALSE)) else NA
@@ -572,6 +598,7 @@ regressFluxTanh <- function(
 								, AIC = NA
 								,autoCorr =  NA 
 						)
+			, times0 = if(isOmittingFirstRec) timesSec[-1] else timesSec	##<< used predictor vector: seconds starting from 0, can be used for return for plotting
 			, model = nlmBest)	##<< the model-fit object (here of class gnls)
 }
 attr(regressFluxTanh,"ex") <- function(){

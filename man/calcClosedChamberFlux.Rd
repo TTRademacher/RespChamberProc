@@ -54,6 +54,7 @@ return value sdFlux is the maximum of those two components}
 \item{sdFluxLeverage}{the standard deviation of the flux by leverage of starting or end values of the time series}
 \item{iFRegress}{index of the best (lowest AIC) regression function}
 \item{r2}{coefficient of determination}
+\item{times}{predictor times for the model fit (excluding and possibly first record)}
 \item{model}{the model fit object (based on subset with finite measure and time)
 }}
 
