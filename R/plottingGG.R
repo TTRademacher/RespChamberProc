@@ -34,17 +34,17 @@ plotCampaignConcSeries <- function(
 	} else {
 		ds$qf <- factor(0)
 	}
-	ds <- ds[ is.finite(ds[[varName]]),,drop=FALSE]
-	colCodes <- rep("lightgray", length(levels(ds$qf)) )
-	colCodes[1] <- "black"
+	dsFin <- ds[ is.finite(ds[[varName]]),,drop=FALSE]
+	colCodes <- structure(rep("lightgray", length(levels(dsFin$qf)) ), names=levels(dsFin$qf))
+	colCodes["0"] <- "black"
 	#colCodes[uniqueQf==10] <- "darkgrey"
 	#(as.numeric(unique(ds$id))-1)%/%plotsPerPage+1
-	dsp <- cbind(iPage= factor((as.numeric(ds$id)-1)%/%plotsPerPage+1), ds)
+	dsp <- cbind(iPage= factor((as.numeric(dsFin$id)-1)%/%plotsPerPage+1), dsFin)
 	message(paste("Number of pages (each ",plotsPerPage," plots): ", length(unique(dsp$iPage))), sep="" )
 	dss <- dsp[dsp$iPage==1,]
 	#ds$H2O_dry <- corrConcDilution(ds, colConc = "H2O_LI840", colVapour = "H2O_LI840"); varName <- "H2O_dry"
 	if( length(resL) ) resL <- structure(lapply( seq_along(resL), function(i){ resLi <- resL[[i]]; resLi$qf <- qualityFlag[i]; resLi }), names=names(resL))
-	#dss <- subset(dsp, iPage==16)
+	#dss <- subset(dsp, iPage==24)
 	plotList <- dlply(dsp, "iPage", function(dss){
 				idsPage <- unique(dss$id)
 				if(isVerbose) message(paste(idsPage, collapse=","))
