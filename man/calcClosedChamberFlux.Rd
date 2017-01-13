@@ -1,7 +1,7 @@
 \name{calcClosedChamberFlux}
 \alias{calcClosedChamberFlux}
 \title{calcClosedChamberFlux}
-\description{Calculate CO2 flux and its uncertainties for a non steady-state canopy chamber.}
+\description{Calculate gas flux and its uncertainties for a non steady-state canopy chamber.}
 \usage{calcClosedChamberFlux(ds, colConc = "CO2_dry", colTime = "TIMESTAMP", 
     colTemp = "TA_Avg", colPressure = "Pa", volume = 1, 
     area = 1, fRegress = c(exp = regressFluxExp, lin = regressFluxLinear, 

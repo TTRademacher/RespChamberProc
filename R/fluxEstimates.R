@@ -1,6 +1,6 @@
 
 calcClosedChamberFlux <- function(
-	### Calculate CO2 flux and its uncertainties for a non steady-state canopy chamber.
+	### Calculate gas flux and its uncertainties for a non steady-state canopy chamber.
 	ds						##<< data.frame with concentration and time column of a chamber measurement of one replicate
 	,colConc="CO2_dry"		##<< column name of CO2 concentration [ppm]
 	,colTime="TIMESTAMP"	##<< column name of time [s], must be of class POSIXct or numeric or integer
