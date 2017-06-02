@@ -3,7 +3,7 @@ corrConcDilution <- function(
   ### Calculate concentration corrected for dilution with water vapor		
   ds 					##<< data frame with each row one observations, and respective columns 
   ,colConc="CO2_Avg"	##<< column name of CO2 concentration [ppm]
-  ,colVapour="H20_Avg"	##<< column name of CO2 concentration [ppt]
+  ,colVapour="H20_Avg"	##<< column name of water vapour concentration [ppt]
 ){
   ##details<< 
   ##  If CO2 concentration is measured per moist air, this function will calculate the concentration\
