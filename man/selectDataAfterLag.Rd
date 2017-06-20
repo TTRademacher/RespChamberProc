@@ -5,7 +5,7 @@
 \usage{selectDataAfterLag(ds, colConc = "CO2_dry", colTime = "TIMESTAMP", 
     tLagFixed = NA, maxLag = 50, tLagInitial = 10, minTimeDataAfterBreak = 30, 
     minTLag = 0)}\arguments{
-  \item{ds}{data.frame with time and concentration columns}
+  \item{ds}{a tibble or data.frame with time and concentration columns}
   \item{colConc}{column name of CO2 concentration per dry air [ppm]}
   \item{colTime}{column name of time column [s]}
   \item{tLagFixed}{possibility to specify the lagTime (in seconds) instead of estimating them}

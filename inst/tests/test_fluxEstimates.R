@@ -20,12 +20,12 @@ test_that("default example flux Estimates runs",{
 test_that("no flux with random data",{
 			set.seed(0815)
 			concR <- 390 + rnorm(length(times), sd=0.3)
-			plot( concR ~ times )
+			#plot( concR ~ times )
 			ds <- data.frame( CO2_dry=concR, TIMESTAMP=times, TA_Avg=20, Pa=101*1000)
 			#trace(calcClosedChamberFlux, recover)		#untrace(calcClosedChamberFlux)
 			res <- calcClosedChamberFlux(ds)
-			expect_true( abs(res$stat["flux"])-res$stat["sdFlux"] < 0 )	# not significantly different from 0
-			expect_that( length(coefficients(res$model)), equals(2) )	# fitted a linear model
+			expect_true( abs(res$flux)-res$sdFlux < 0 )	# not significantly different from 0
+			expect_that( length(coefficients(res$model[[1]])), equals(2) )	# fitted a linear model
 		})
 			
 			

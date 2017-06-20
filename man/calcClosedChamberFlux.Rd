@@ -41,8 +41,7 @@ There are two kinds of uncertainty associated with the flux.
 The first comes from the uncertainty of the slope of concentration increase.
 The second comes from the leverage of starting and end points of the regression (estimated by a bootstrap)
 return value sdFlux is the maximum of those two components}
-\value{list with entries \code{stat}, and \code{model}.
-\item{stat}{numeric vector with the following entries:}
+\value{data.frame (tibble) of one row with entries
 \item{flux}{the estimate of the CO2 flux into the chamber [mumol / m2 / s]}
 \item{fluxMedian}{the median of the flux bootsrap estimates [mumol / m2 / s]}
 \item{sdFlux}{the standard deviation of the CO2 flux}
@@ -54,8 +53,7 @@ return value sdFlux is the maximum of those two components}
 \item{sdFluxLeverage}{the standard deviation of the flux by leverage of starting or end values of the time series}
 \item{iFRegress}{index of the best (lowest AIC) regression function}
 \item{r2}{coefficient of determination}
-\item{times}{predictor times for the model fit (excluding and possibly first record)}
-\item{model}{the model fit object (based on subset with finite measure and time)
+\item{times}{integer vector of predictor times for the model fit (excluding and possibly first record)
 }}
 
 \author{Thomas Wutzler, Oscar Perez Priego}
@@ -65,14 +63,14 @@ return value sdFlux is the maximum of those two components}
 \seealso{\code{\link{RespChamberProc}}}
 \examples{
 #data(chamberLoggerEx1s)
+library(dplyr)
 ds <- chamberLoggerEx1s
     ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
 conc <- ds$CO2_dry <- corrConcDilution(ds)
 #trace(calcClosedChamberFlux, recover)	#untrace(calcClosedChamberFlux)
 resFit <- calcClosedChamberFlux(ds)
-resFit$stat[c("flux","sdFlux")]
+select(resFit, flux, sdFlux) \%>\% unlist() 
 #plotResp(ds, resFit)
-
 .tmp.compareFittingFunctions <- function(){
 	resLin <- calcClosedChamberFlux(ds, fRegress=list(regressFluxLinear))
 	resPoly <- calcClosedChamberFlux(ds, fRegress=list(regressFluxSquare))

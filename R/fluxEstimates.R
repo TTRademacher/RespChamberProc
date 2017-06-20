@@ -29,8 +29,8 @@ calcClosedChamberFlux <- function(
 	isMissingCols <- !(c(colConc, colTime, colTemp, colPressure) %in% colnames(ds))
 	if( any(isMissingCols) ) stop("calcClosedChamberFlux:  missing collumns ",paste(c(colConc, colTime, colTemp, colPressure)[isMissingCols],collapse=",") )
 	#
-	if( !( is.numeric(ds[,colTime]) ||  inherits(ds[,colTime], "POSIXct")) ) stop(
-				"Timestamp column must be given in seconds, i.e. must be of class POSIXct, integer, or numeric. But it was of class ",paste(class(ds[,colTime]),collapse=",") )
+	if( !( is.numeric(ds[[colTime]]) ||  inherits(ds[[colTime]], "POSIXct")) ) stop(
+				"Timestamp column must be given in seconds, i.e. must be of class POSIXct, integer, or numeric. But it was of class ",paste(class(ds[[colTime]]),collapse=",") )
 	##details<< 
 	## The function \code{fRegress} must conform to \code{\link{regressFluxSquare}}, i.e.
 	## return a vector of length 2: the flux estimate and its standard deviation.
@@ -39,7 +39,7 @@ calcClosedChamberFlux <- function(
 	## to function with argument \code{fRegressSelect}, by default to the AIC criterion.
 	## Fit an expoenential curve by using function \code{\link{regressFluxExp}}.
 	#
-	#plot( ds[,colConc] ~ ds[,colTime] )
+	#plot( ds[[colConc] ~ ds[[colTime] )
 	if( !length(names(fRegress)) ) names(fRegress) <- 1:length(fRegress)
 	dslRes <- if( isTRUE(debugInfo$useOscarsLagDectect) ){
 		dslRes <- selectDataAfterLagOscar(ds, colConc=colConc, colTime=colTime, tLagFixed=debugInfo$tLagFixed)
@@ -54,12 +54,12 @@ calcClosedChamberFlux <- function(
 	retEmpty <- list( stat=structure(rep(NA, length(retEntries)), names=retEntries )
 			,model=NULL)
 	if( nrow(dsl) < 8L ) return(retEmpty)
-	concRange <- diff( quantile(dsl[,colConc], c(0.05,0.95), na.rm=TRUE ))
+	concRange <- diff( quantile(dsl[[colConc]], c(0.05,0.95), na.rm=TRUE ))
 	if( concRange <= concSensitivity ){
 		fRegress=c(lin=regressFluxLinear)
 	}
-	timesOrig <- ds[,colTime]
-	times <- dsl[,colTime]
+	timesOrig <- ds[[colTime]]
+	times <- dsl[[colTime]]
 	if( any(table(times) != 1) ){
 		#recover()
 		stop("calcClosedChamberFlux: must provide data series with unique times (encountered multiple times)\n"
@@ -68,7 +68,7 @@ calcClosedChamberFlux <- function(
 	times0 <- as.numeric(times) - as.numeric(times[1])
 	tLag <- as.numeric(timesOrig[ dslRes$lagIndex ]) - as.numeric(timesOrig[1])
 	#abline(v=tLag+ds[1,colTime] )
-	conc <- dsl[,colConc]
+	conc <- dsl[[colConc]]
 	#
 	# removed check for linear fit
 	# plot( conc ~ times )
@@ -107,21 +107,20 @@ calcClosedChamberFlux <- function(
 	# correct fluxes for density and express per chamber instead of per mol air, express per area
 	#chamberTemp <- ds[ dslRes$lagIndex,colTemp ]
 	# better take the median temperature, as sensor might be off at the exact timelag
-	chamberTemp <- median(ds[ dslRes$lagIndex,colTemp ], na.rm=TRUE)
+	chamberTemp <- median(ds[[colTemp]][dslRes$lagIndex], na.rm=TRUE)
 	fluxEstTotal = corrFluxDensity(fluxEst, volume = volume
 	                , temp = chamberTemp
-	                , pressure = ds[ dslRes$lagIndex,colPressure ]) / area
+	                , pressure = ds[[colPressure]][dslRes$lagIndex]) / area
 	leverageEstTotal = corrFluxDensity(leverageEst, volume = volume
 	                                   , temp = chamberTemp
-	                                   , pressure = ds[ dslRes$lagIndex,colPressure ]) / area
+	                                   , pressure = ds[[colPressure]][dslRes$lagIndex]) / area
 	#
 	#corrFluxDensity( dsl, vol=2)
-	##value<< list with entries \code{stat}, and \code{model}.
 	resid <- residuals(mod)
-	res <- list(
-		 stat= c(	##<< numeric vector with the following entries:
+	##value<< data.frame (tibble) of one row with entries
+	res <- tibble::tibble( 
 		flux = as.numeric(fluxEstTotal[1])			    ##<< the estimate of the CO2 flux into the chamber [mumol / m2 / s]
-		,fluxMedian = as.numeric(leverageEstTotal[3])	##<< the median of the flux bootsrap estimates [mumol / m2 / s] 
+		,fluxMedian = as.numeric(leverageEstTotal[3])	##<< the median of the flux bootsrap estimates [mumol / m2 / s]
 		,sdFlux = max(fluxEstTotal["sdFlux"],leverageEstTotal["sd"], na.rm=TRUE)	##<< the standard deviation of the CO2 flux
 		,tLag = tLag		                            ##<< time of lag phase in seconds
 		,lagIndex = dslRes$lagIndex 					##<< index of the row at the end of lag-time
@@ -133,21 +132,21 @@ calcClosedChamberFlux <- function(
 		,sdResid=sd(resid)
 		,iqrResid=IQR(resid)
 		,r2= 1-sum(resid^2)/sum((dsl[[colConc]]-mean(dsl[[colConc]],na.rm=TRUE))^2)	##<< coefficient of determination
+		,times = list(fluxEstL[[iBest]]$times)			##<< integer vector of predictor times for the model fit (excluding and possibly first record)
+		,model = list(mod)
 	)
-	, times = fluxEstL[[iBest]]$times					##<< predictor times for the model fit (excluding and possibly first record)
-	, model = mod	)									##<< the model fit object (based on subset with finite measure and time)
 	return(res)
 }
 attr(calcClosedChamberFlux,"ex") <- function(){
 	#data(chamberLoggerEx1s)
+	library(dplyr)
 	ds <- chamberLoggerEx1s
     ds$Pa <- chamberLoggerEx1s$Pa * 1000  # convert kPa to Pa
 	conc <- ds$CO2_dry <- corrConcDilution(ds)
 	#trace(calcClosedChamberFlux, recover)	#untrace(calcClosedChamberFlux)
 	resFit <- calcClosedChamberFlux(ds)
-	resFit$stat[c("flux","sdFlux")]
+	select(resFit, flux, sdFlux) %>% unlist() 
 	#plotResp(ds, resFit)
-	
 	.tmp.compareFittingFunctions <- function(){
 		resLin <- calcClosedChamberFlux(ds, fRegress=list(regressFluxLinear))
 		resPoly <- calcClosedChamberFlux(ds, fRegress=list(regressFluxSquare))
@@ -201,7 +200,7 @@ regressSelectPref1 <- function(
 
 selectDataAfterLag <- function(
 		### Omit the data within lag-time and normalize times to start after lag
-		ds   ##<< data.frame with time and concentration columns
+		ds   ##<< a tibble or data.frame with time and concentration columns
 		,colConc="CO2_dry"		##<< column name of CO2 concentration per dry air [ppm]
 		,colTime="TIMESTAMP"  	##<< column name of time column [s]
 		,tLagFixed=NA			##<< possibility to specify the lagTime (in seconds) instead of estimating them
@@ -210,9 +209,10 @@ selectDataAfterLag <- function(
 		,minTimeDataAfterBreak=30	##<< number of minimum time (in seconds) left after breakpoint
 		,minTLag=0				##<< possibility to specify a minimum lag-time in seconds 
 ){
+	ds <- as_tibble(ds)
 	##seealso<< \code{\link{RespChamberProc}}
   	maxLagConstrained <- min(maxLag, nrow(ds))
-	times <- as.numeric(ds[,colTime])[1:maxLagConstrained]
+	times <- as.numeric(ds[[colTime]])[1:maxLagConstrained]
 	times0 <- times - times[1]
 	if( length(tLagFixed) && is.finite(tLagFixed) ){
 		if( tLagFixed > tail(times0,1) ) return(list(
@@ -226,7 +226,7 @@ selectDataAfterLag <- function(
 				,ds = ds[ FALSE, ,drop=FALSE]    	
 		))
 		iBreak <- iBreakMin <- min(which( times0 >= minTLag ))	
-		obs <- ds[1:maxLagConstrained,colConc]
+		obs <- ds[[colConc]][1:maxLagConstrained]
 		lm0 <- lm(obs ~ times0)
 	    o <-try( segmented(lm0, seg.Z= ~times0
 					,psi=list(times0=tLagInitial)
@@ -274,12 +274,12 @@ selectDataAfterLagOscar <- function(
 	##seealso<< \code{\link{RespChamberProc}}
   # TODO: account for different times
   if( length(tLagFixed) && is.finite(tLagFixed) ){
-  	times <- as.numeric(ds[,colTime])
+  	times <- as.numeric(ds[[colTime]])
   	times0 <-times - times[1] 
   	iBreak <- min(which( times0 >= tLagFixed ))  
   }else {
-  	iBreak <- min(cpt.mean(ds[,colConc],penalty="SIC",method="PELT",class=FALSE))[1]
-    #plot( ds[,colConc] )
+  	iBreak <- min(cpt.mean(ds[[colConc]],penalty="SIC",method="PELT",class=FALSE))[1]
+    #plot( ds[[colConc] )
     #abline(v=iBreak)
   }
   ##value<< A list with entries

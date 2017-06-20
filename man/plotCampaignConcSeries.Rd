@@ -2,16 +2,17 @@
 \alias{plotCampaignConcSeries}
 \title{plotCampaignConcSeries}
 \description{get a series of ggplots of the time series and its fits}
-\usage{plotCampaignConcSeries(ds, resL = NULL, varName = "CO2_dry", 
-    idCol = "iChunk", timeCol = "TIMESTAMP", qualityFlag = 0, 
+\usage{plotCampaignConcSeries(ds, dsFits = NULL, varName = "CO2_dry", 
+    colChunk = "iChunk", timeCol = "TIMESTAMP", qualityFlag = 0, 
     fTextBR = NULL, fTextTL = NULL, fTextTR = NULL, plotsPerPage = 64, 
-    fileName = "", colIds = c(), ggplotList = c(), isVerbose = TRUE)}\arguments{
+    fileName = "", colIds = c(), ggplotList = c(), ylabel = paste0(varName, 
+        " (", yunit, ")"), yunit = "", isVerbose = TRUE)}\arguments{
   \item{ds}{data frame to plot, with collumns \code{idCol}, \code{timeCol} and \code{varName}}
-  \item{resL}{list with results of \code{\link{calcClosedChamberFlux}} for each id-subset in ds}
+  \item{dsFits}{tibble of results of \code{\link{calcClosedChamberFlux}} with columns <colChunk>, flux, sdFlux, model,}
   \item{varName}{variable to plot}
-  \item{idCol}{collumn name of identifier of one time series}
-  \item{timeCol}{collumn name of the time collumn}
-  \item{qualityFlag}{vector of length nrow(ds) of a quality flag. For chunks where
+  \item{colChunk}{column name of identifier of one time series}
+  \item{timeCol}{column name of the time collumn}
+  \item{qualityFlag}{vector of length unique(ds[[colChunk]]): quality flag. For chunks where
 this flag is not 0, subplots are dimmed.}
   \item{fTextBR}{function(resFit) to add some text to the bottom right of the plot, by default the rSquared from fitting object}
   \item{fTextTL}{function(resFit) to add some text to the top left of the plot, by default the autocorrelation from fitting object}
@@ -21,11 +22,14 @@ this flag is not 0, subplots are dimmed.}
   \item{colIds}{
 }
   \item{ggplotList}{list added to each ggplot.}
+  \item{ylabel}{y-label, may provide a string of the unit}
+  \item{yunit}{scalar string, part of default y label}
   \item{isVerbose}{
 }
 }
 
-
+\value{a tibble with columns page and plot, the second column holding plotting objects
+\code{dsPlots \%>\% rowwise() \%>\% do({print(.$plot)})}}
 
 \author{Thomas Wutzler, Oscar Perez Priego}
 

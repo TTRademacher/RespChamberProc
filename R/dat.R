@@ -35,7 +35,7 @@ readDat <- function(
 	#plot( CO2_Avg ~ TIMESTAMP, data=rawData )
 	attr(rawData,"fileInfo") <- fileInfo
 	attr(rawData,"colInfo") <- colInfo
-	rawData
+	as_tibble(rawData)
 }
 attr(readDat,"ex") <- function(){
 	fName <- system.file("genData/chamberLoggerEx1_short.dat", package = "RespChamberProc")
@@ -93,7 +93,7 @@ read81x <- function(
 			})
 	res <- do.call( rbind, resBlocks )
 	attr(res,"fileInfo") <- fileInfo
-	res
+	as_tibble(res)
 }
 attr(read81x,"ex") <- function(){
 	#fName <- "inst/genData/Flux2_140929_1700.81x"
@@ -110,7 +110,7 @@ attr(read81x,"ex") <- function(){
 
 subsetContiguous <- function(
 	### Get contiguous subsets 
-	ds						##<< data.frame of measurements 
+	ds						##<< data.frame or tibble of measurements 
 	,colTime="TIMESTAMP"	##<< column name that of time (POSIXct)
 	,colIndex="Collar"		##<< column name of index variable (factor or integer)
 	,colMeasure="CO2_dry"	##<< column name of the concentration measurement
@@ -119,42 +119,36 @@ subsetContiguous <- function(
 	,minTime=60				##<< minimum length of time (in seconds) that a contiguous subsets covers
 	,indexNA=0				##<< value of the index column, that signifies records not to use
 	,fIsBadChunk=function(dsi) FALSE	
-	### additional function taking and subset and returning a boolean value whether its a chunk to be omitted
+	### additional function taking a subset of contiguous data and returning a boolean value whether it shoudl be omitted
 ){
 	##details<< 
 	## The time series in logger data consists of several chunks of concentration measurments.
 	## In order to determine these chunks, either a change in an index variable (input by between the
 	## measurements) or a gap in time is used.
+	ds <- as_tibble(ds)
 	reqCols <- c(colTime,colIndex, colMeasure)
 	iMissingCols <- which(!(reqCols %in% names(ds)))
 	if( length(iMissingCols) ) stop("subsetContiguous: missing columns: ", paste(reqCols[iMissingCols],collapse=","))
-	timeDiff <- diff(as.numeric(ds[,colTime]))
-	iGaps <-  which( timeDiff > gapLength)
-	iCollarChanges <- which( diff(as.numeric(ds[,colIndex])) != 0 )
-	iChunks <- c( 1, sort(union(iCollarChanges, iGaps)), nrow(ds) ) 
-	dsChunksL <- lapply( 2:length(iChunks), function(i){
-				cbind( iChunk=i-1, ds[(iChunks[i-1]+1):(iChunks[i]), ,drop=FALSE])
-			}) 
+	timeDiffInSeconds <- diff(as.numeric(ds[[colTime]]))
+	iGaps <-  which( timeDiffInSeconds > gapLength)	# records with missing records in time before (start a new chunk) 
+	iCollarChanges <- which( diff(as.numeric(ds[[colIndex]])) != 0 )
+	iChunks <- c( 1, sort(union(iCollarChanges, iGaps)), nrow(ds) ) # start, breaks, end 
 	##details<<
-	## Between the actural series of measurements, the logger may record sparse data.
+	## Between the actual series of measurements, the logger may record sparse data.
 	## These chunks are indicated by value \code{indexNA} in the index column or
 	## by shortness of the series. Only chunks with at least \code{minNRec} records and at least 
 	## \code{minTime} seconds are reported. Others are neglected.
-	#
-	#sapply( dsChunksL, nrow )
-	#sapply( dsChunkLs, function(dsi){ dsi[[colIndex]][1] })
-	#dsia <- dsChunksL[[4]]	
-	#dsia <- dsChunksL[[47]]	
-	dsChunksLClean <- do.call( rbind, lapply(dsChunksL, function(dsia){
-						index <- dsia[[colIndex]][1] 
-						dsi <- dsia[is.finite(dsia[[colMeasure]]),]
-						timeSec <- as.numeric(dsi[[colTime]]) - as.numeric( dsi[[colTime]][1] )
-						#if( collar == indexNA || nrow(dsi) < minNRec || max(timeSec) < minTime || var(dsi[[colMeasure]])==0  ){
-						if( index == indexNA || nrow(dsi) < minNRec || max(timeSec) < minTime || fIsBadChunk(dsi)){
-							return( NULL )
-						}else return(dsi)
-					}))
-	dsChunksLClean$iChunk <- as.factor(dsChunksLClean$iChunk)		# convert to factor
-	dsChunksLClean
+	dsChunks <- bind_rows(map_df( 2:length(iChunks), function(i){
+				dsia <- cbind( iChunk=i-1, filter( ds, row_number() %in% (iChunks[i-1]+1):(iChunks[i]) ))
+				index <- dsia[[colIndex]][1] 
+				dsi <- dsia[is.finite(dsia[[colMeasure]]),]
+				timeSec <- as.numeric(dsi[[colTime]]) - as.numeric( dsi[[colTime]][1] )
+				#if( collar == indexNA || nrow(dsi) < minNRec || max(timeSec) < minTime || var(dsi[[colMeasure]])==0  ){
+				if( index == indexNA || nrow(dsi) < minNRec || max(timeSec) < minTime || fIsBadChunk(dsi)){
+					return( NULL )
+				}else return(dsi)
+			}))
+	dsChunks$iChunk <- as.factor(dsChunks$iChunk)		# convert to factor
 	### Argument \code{ds} with between-Chunk rows omitted and an additional integer column \code{iChunk} that designates the chunk number.
+	dsChunks
 }

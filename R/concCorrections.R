@@ -12,11 +12,11 @@ corrConcDilution <- function(
 	## per dry air.
 	##references<<
 	## LI-COR, Application Note 129. The Importance of Water Vapor Measurements and Corrections. LI-COR, Inc., 4421 Superior Street, Lincoln, NE 68504, USA.
-	vapourPpm <- ds[,colVapour]/1000
+	vapourPpm <- ds[[colVapour]]/1000
 	if( isTRUE(isUpdateOnNonFiniteVapour) ){
-		ds[,colConc]/(1-vapourPpm)
+		ds[[colConc]]/(1-vapourPpm)
 	} else {
-		ans <- ds[,colConc]
+		ans <- ds[[colConc]]
 		isFiniteVapour <- is.finite(vapourPpm)
 		ans[isFiniteVapour] <- ans[isFiniteVapour]/(1-vapourPpm[isFiniteVapour])
 		ans
