@@ -3,9 +3,8 @@
 \title{subsetContiguous}
 \description{Get contiguous subsets }
 \usage{subsetContiguous(ds, colTime = "TIMESTAMP", colIndex = "Collar", 
-    colMeasure = "CO2_dry", gapLength = 12, minNRec = 20, 
-    minTime = 60, indexNA = 0, fIsBadChunk = function(dsi) FALSE)}
-\arguments{
+    colMeasure = "CO2_dry", gapLength = 12, minNRec = 20, minTime = 60, 
+    indexNA = 0, fIsBadChunk = function(dsi) FALSE)}\arguments{
   \item{ds}{data.frame of measurements}
   \item{colTime}{column name that of time (POSIXct)}
   \item{colIndex}{column name of index variable (factor or integer)}

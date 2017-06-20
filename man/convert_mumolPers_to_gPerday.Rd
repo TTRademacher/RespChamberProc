@@ -2,8 +2,7 @@
 \alias{convert_mumolPers_to_gPerday}
 \title{convert mumolPers to gPerday}
 \description{convert vom mumol CO2 / second to g C / day}
-\usage{convert_mumolPers_to_gPerday(flux)}
-\arguments{
+\usage{convert_mumolPers_to_gPerday(flux)}\arguments{
   \item{flux}{numeric vector or array: flux}
 }
 \details{Concentration measures are usually given by micromol CO2 across several seconds, and

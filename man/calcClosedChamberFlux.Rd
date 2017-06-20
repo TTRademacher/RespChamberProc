@@ -3,14 +3,12 @@
 \title{calcClosedChamberFlux}
 \description{Calculate gas flux and its uncertainties for a non steady-state canopy chamber.}
 \usage{calcClosedChamberFlux(ds, colConc = "CO2_dry", colTime = "TIMESTAMP", 
-    colTemp = "TA_Avg", colPressure = "Pa", volume = 1, 
-    area = 1, fRegress = c(exp = regressFluxExp, lin = regressFluxLinear, 
-        tanh = regressFluxTanh), fRegressSelect = regressSelectPref1, 
-    concSensitivity = 1, maxLag = 50, minTLag = 0, 
-    debugInfo = list(useOscarsLagDectect = FALSE, omitAutoCorrFit = FALSE, 
-        omitEstimateLeverage = FALSE, tLagFixed = NA, 
-        isStopOnError = FALSE), ...)}
-\arguments{
+    colTemp = "TA_Avg", colPressure = "Pa", volume = 1, area = 1, 
+    fRegress = c(lin = regressFluxLinear, tanh = regressFluxTanh), 
+    fRegressSelect = regressSelectPref1, concSensitivity = 1, 
+    maxLag = 50, minTLag = 0, debugInfo = list(useOscarsLagDectect = FALSE, 
+        omitAutoCorrFit = FALSE, omitEstimateLeverage = FALSE, 
+        tLagFixed = NA, isStopOnError = FALSE), ...)}\arguments{
   \item{ds}{data.frame with concentration and time column of a chamber measurement of one replicate}
   \item{colConc}{column name of CO2 concentration [ppm]}
   \item{colTime}{column name of time [s], must be of class POSIXct or numeric or integer}
@@ -35,7 +33,9 @@
 \details{The function \code{fRegress} must conform to \code{\link{regressFluxSquare}}, i.e.
 return a vector of length 2: the flux estimate and its standard deviation.
 Optionally, it may return the model fit object in attribute "model"
-If several functions are given, then the best fit is selected according to AIC criterion.
+If several functions are given, then the best fit is selected according 
+to function with argument \code{fRegressSelect}, by default to the AIC criterion.
+Fit an expoenential curve by using function \code{\link{regressFluxExp}}.
 
 There are two kinds of uncertainty associated with the flux.
 The first comes from the uncertainty of the slope of concentration increase.

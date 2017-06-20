@@ -4,10 +4,8 @@
 \description{get a series of ggplots of the time series and its fits}
 \usage{plotCampaignConcSeries(ds, resL = NULL, varName = "CO2_dry", 
     idCol = "iChunk", timeCol = "TIMESTAMP", qualityFlag = 0, 
-    fTextBR = NULL, fTextTL = NULL, fTextTR = NULL, 
-    plotsPerPage = 64, fileName = "", colIds = c(), 
-    ggplotList = c(), isVerbose = TRUE)}
-\arguments{
+    fTextBR = NULL, fTextTL = NULL, fTextTR = NULL, plotsPerPage = 64, 
+    fileName = "", colIds = c(), ggplotList = c(), isVerbose = TRUE)}\arguments{
   \item{ds}{data frame to plot, with collumns \code{idCol}, \code{timeCol} and \code{varName}}
   \item{resL}{list with results of \code{\link{calcClosedChamberFlux}} for each id-subset in ds}
   \item{varName}{variable to plot}

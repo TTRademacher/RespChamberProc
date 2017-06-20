@@ -8,7 +8,7 @@ calcClosedChamberFlux <- function(
     ,colPressure="Pa"       ##<< column name of air pressure inside chamber [Pa]
 	,volume=1               ##<< volume inside the chamber im [m3]
 	,area=1					##<< area of the exchange surface [m2]
-	,fRegress = c(exp=regressFluxExp, lin=regressFluxLinear, tanh=regressFluxTanh)	##<< list of functions to yield a single flux estimate, see details
+	,fRegress = c(lin=regressFluxLinear, tanh=regressFluxTanh )	##<< list of functions to yield a single flux estimate, see details
 	,fRegressSelect = regressSelectPref1	 ##<< function to select the regression function based on fitting results. Signature and return must correspond to \code{\link{regressSelectPref1}} 
 	,concSensitivity=1		##<< measurement sensitivity of concentration. With concentration change below this sensitivity, only a linear model is fit
 	,maxLag = 50			##<< number of initial records to be screened for a breakpoint, i.e. the lag (higher for water vapour than for CO2)
@@ -35,7 +35,9 @@ calcClosedChamberFlux <- function(
 	## The function \code{fRegress} must conform to \code{\link{regressFluxSquare}}, i.e.
 	## return a vector of length 2: the flux estimate and its standard deviation.
 	## Optionally, it may return the model fit object in attribute "model"
-	## If several functions are given, then the best fit is selected according to AIC criterion.
+	## If several functions are given, then the best fit is selected according 
+	## to function with argument \code{fRegressSelect}, by default to the AIC criterion.
+	## Fit an expoenential curve by using function \code{\link{regressFluxExp}}.
 	#
 	#plot( ds[,colConc] ~ ds[,colTime] )
 	if( !length(names(fRegress)) ) names(fRegress) <- 1:length(fRegress)

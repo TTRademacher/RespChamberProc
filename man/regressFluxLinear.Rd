@@ -2,8 +2,7 @@
 \alias{regressFluxLinear}
 \title{regressFluxLinear}
 \description{Estimate the initial flux by linear regression}
-\usage{regressFluxLinear(conc, times, start = c(), tryAutoCorr = TRUE)}
-\arguments{
+\usage{regressFluxLinear(conc, times, start = c(), tryAutoCorr = TRUE)}\arguments{
   \item{conc}{numeric vector of CO2 concentrations []}
   \item{times}{times of conc measurements	[seconds]}
   \item{start}{numeric vector of starting parameters. May provide from last bootstrap to speed up fitting}
