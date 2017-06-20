@@ -6,7 +6,7 @@ importFrom(changepoint, cpt.mean)
 importFrom(segmented, segmented, seg.control)
 importFrom(nlme, gls, corAR1, gnls, glsControl, gnlsControl)	# coef.corAR1	
 
-import(ggplot2)		
+#import(ggplot2)		
 importFrom(plyr, d_ply, dlply, ldply)	
 # import(dplyr)		# here really need plyr because returning lists	 
 	

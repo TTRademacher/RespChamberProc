@@ -16,6 +16,7 @@ plotCampaignConcSeries <- function(
 		,ggplotList=c()		##<< list added to each ggplot.
 		,isVerbose=TRUE
 ){
+	if( !requireNamespace("ggplot2")) stop("package ggplot2 must be installed for this function to work.")
 	# do not clutter the function declaration with these long defaults, better assing in body: 
 	if( !length(fTextBR) ) fTextBR <- function(resFit){ if( is.finite(resFit$stat["r2"])) format(resFit$stat["r2"],digits=2) else ""} 
 	if( !length(fTextTL) ) fTextTL <- function(resFit){ if( is.finite(resFit$stat["autoCorr"])) format(resFit$stat["autoCorr"],digits=2) else ""} 
@@ -56,13 +57,13 @@ plotCampaignConcSeries <- function(
 									times0 <- times - times[1]
 								}))
 				#dss <- dsc
-				p1 <- ggplot( dss, aes_string(x="times0", y=varName) ) + 
-						geom_point(shape=1, aes_string(col="qf"), na.rm=TRUE) + 
-						facet_wrap( ~id, scales="free") +
-						scale_color_manual(values=colCodes, guide = FALSE) +
-						theme_bw(base_size=9) + 
-						#theme(panel.grid.minor=element_blank())
-						theme(panel.grid=element_blank())
+				p1 <- ggplot2::ggplot( dss, ggplot2::aes_string(x="times0", y=varName) ) + 
+						ggplot2::geom_point(shape=1, ggplot2::aes_string(col="qf"), na.rm=TRUE) + 
+						ggplot2::facet_wrap( ~id, scales="free") +
+						ggplot2::scale_color_manual(values=colCodes, guide = FALSE) +
+						ggplot2::theme_bw(base_size=9) + 
+						#ggplot2::theme(panel.grid.minor=element_blank())
+						ggplot2::theme(panel.grid=ggplot2::element_blank())
 				if( length(resL) ){
 					iiChunk <- which(names(resL) %in% idsPage)
 					resLi <- resL[iiChunk]
@@ -88,12 +89,12 @@ plotCampaignConcSeries <- function(
 					dfTextTL <- data.frame(id=names(resLi), text=sapply(resLi, fTextTL ), row.names = NULL)
 					dfTextTR <- data.frame(id=names(resLi), text=sapply(resLi, fTextTR ), row.names = NULL)
 					p1 <- p1 + 
-					geom_vline( data=dfLag, aes_string(xintercept="tLag"), col="darkgrey", linetype="dashed", na.rm=TRUE ) +
-					{if( length(dfFitted)) geom_line( data=dfFitted, aes_string(y="fitted"), col="red", na.rm=TRUE  ) else c() } +
-					geom_text( data=dfTextBR, aes_string(label="text"), x=+Inf, y=-Inf, hjust=1.05, vjust=0, na.rm=TRUE) +
-					geom_text( data=dfTextTL, aes_string(label="text"), x=-Inf, y=+Inf, hjust=0, vjust=1, na.rm=TRUE) +
-					geom_text( data=dfTextTR, aes_string(label="text"), x=+Inf, y=+Inf, hjust=1, vjust=1, na.rm=TRUE) +
-					theme()
+							ggplot2::geom_vline( data=dfLag, ggplot2::aes_string(xintercept="tLag"), col="darkgrey", linetype="dashed", na.rm=TRUE ) +
+					{if( length(dfFitted)) ggplot2::geom_line( data=dfFitted, ggplot2::aes_string(y="fitted"), col="red", na.rm=TRUE  ) else c() } +
+					ggplot2::geom_text( data=dfTextBR, ggplot2::aes_string(label="text"), x=+Inf, y=-Inf, hjust=1.05, vjust=0, na.rm=TRUE) +
+					ggplot2::geom_text( data=dfTextTL, ggplot2::aes_string(label="text"), x=-Inf, y=+Inf, hjust=0, vjust=1, na.rm=TRUE) +
+					ggplot2::geom_text( data=dfTextTR, ggplot2::aes_string(label="text"), x=+Inf, y=+Inf, hjust=1, vjust=1, na.rm=TRUE) +
+					ggplot2::theme()
 				}
 				p1
 			})

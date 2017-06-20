@@ -55,7 +55,8 @@ to process each measurement cycle independently, we first determine parts of
 the time series that are contiguous, i.e. without gaps and without change of an
 index variable, here variable `collar`.
 
- ```{r}
+
+```{r}
 dsChunk <- subsetContiguous(ds, colTime="TIMESTAMP", colIndex="Collar") 
 head(dsChunk)
 ```
@@ -63,7 +64,7 @@ head(dsChunk)
 The new modified contains a new variable, `iChunk`, holding a factor that
 changes with different measurment cycles.
 This factor can be used to select subset of single measurement cycles. 
- ```{r , spar=TRUE}
+```{r , spar=TRUE}
 dsChunk <- subsetContiguous(ds, colTime="TIMESTAMP", colIndex="Collar") 
 head(dsChunk)
 dss <- subset(dsChunk, iChunk==15)
@@ -72,6 +73,32 @@ plot( CO2_dry ~ TIMESTAMP, dss, ylab="CO2 (ppm)", xlab="time (Minute:Second)")
 
 Computing the flux
 ---------------------
+```{r}
+# for demonstration use only the first 20 cycles
+dsChunk20 <- subset(dsChunk, as.integer(iChunk) <= 20) 
+chamberVol=0.6*0.6*0.6		# chamber was a cube of 0.6m length
+surfaceArea=0.6*0.6
+resL <- plyr::dlply(dsChunk20, ~iChunk, function(dss){
+			cat(",",dss$iChunk[1])
+			ans <- calcClosedChamberFlux(dss, colTemp="T_LI840"
+					,fRegress = c(lin = regressFluxLinear, tanh = regressFluxTanh)	# linear and saturating shape
+					,debugInfo=list(omitEstimateLeverage=TRUE)	# faster
+					,volume=chamberVol
+					,area=surfaceArea
+			)		
+		}
+		#, .parallel=TRUE
+		)
+# extract the flux and its uncertainty from results list		
+resStat <- plyr::ldply(resL, function(entry){ entry$stat[c("flux","sdFlux","tLag")] })
+head(resStat)
+```
+
+```{r eval=FALSE, echo=FALSE}
+library(twDev)
+reloadPkg("RespChamberProc")
+```
+
 ```{r}
 # for demonstration use only the first 20 cycles
 dsChunk20 <- subset(dsChunk, as.integer(iChunk) <= 20) 
