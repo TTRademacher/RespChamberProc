@@ -75,7 +75,7 @@ read81x <- function(
 	fileInfo <- readLines(fName, n=nRowsFileInfo )
 	colNamesFile <- unlist(read.table(fName, header=FALSE, skip=nRowsFileInfo
 		, nrows=1, sep=sep, na.strings=na.strings))
-	colNamesFile <- colNamesFile[1:(length(colNamesFile)-1)]	# skip annotation collumn, not in data
+	#colNamesFile <- colNamesFile[1:(length(colNamesFile)-1)]	# skip annotation collumn, not in data
 	colClasses = rep(NA, length(colNamesFile))	##<< see \code{link{read.table}}	
 	colClasses[colsTimeStamp] <- "myDate"
 	#colInfo <- read.table(fName, header=TRUE, skip=nRowsFileInfo, nrows=max(1,nRowsColInfo), sep=sep, na.strings=na.strings)
@@ -84,10 +84,11 @@ read81x <- function(
 				rawData <- read.table(fName, header=FALSE
 						, sep=sep, na.strings=na.strings
 						, skip= blockStarts[iChunk]+1
+						, col.names = colNamesFile, fill=TRUE
 						, ...
 						, nrows= summaryStarts[iChunk] - blockStarts[iChunk] -2
-						,colClasses=colClasses)
-				colnames(rawData) <- colNamesFile
+						,colClasses=colClasses
+				)
 				cbind( iChunk=iChunk, rawData[ rawData$Type==1,] )
 			})
 	res <- do.call( rbind, resBlocks )
