@@ -95,7 +95,7 @@ read81x <- function(
 				)
 				cbind( iChunk=iChunk, rawData[ rawData$Type==1,], chunkLabel=label )
 			})
-	res <- bind_rows( resBlocks )
+	res <- suppressWarnings(bind_rows( resBlocks ))		# warning on unequal factor levels of id and chunkLabel
 #	# try using the label as chunk identifier
 #	nChunkPerLabel <- res %>% group_by_(~chunkLabel) %>% summarise_(nLabel=~(max(iChunk) - min(iChunk)))
 #	if( all(nChunkPerLabel$nLabel == 1L)){

@@ -22,16 +22,27 @@ if( nzchar(fName) ){
 	#
 	chamberVol=0.6*0.6*0.6		# chamber was a cube of 0.6m length
 	surfaceArea=0.6*0.6
+	nChunk <- length(unique(dsChunked$iChunk))
+	chamberVolByChunk <- chamberVol * c(0.9, 1.1)
 	resChunks <- calcClosedChamberFluxForChunks(dsChunked, colTemp="T_LI840"
 			,fRegress = c(lin = regressFluxLinear, tanh = regressFluxTanh)	# linear and saturating shape
 			,debugInfo=list(omitEstimateLeverage=TRUE)	# faster
-			,volume=chamberVol
+			,volumesByChunk=chamberVolByChunk
 			,area=surfaceArea)
 	test_that("calcClosedChamberFluxForChunks",{
+				expect_message(
+				resChunks1 <- calcClosedChamberFluxForChunks(dsChunked, colTemp="T_LI840"
+						,fRegress = c(lin = regressFluxLinear, tanh = regressFluxTanh)	# linear and saturating shape
+						,debugInfo=list(omitEstimateLeverage=TRUE)	# faster
+						,volume=chamberVol
+						,area=surfaceArea)
+				)
 				expect_true( nrow(resChunks) > 1 )		
 				expect_true( all( c("flux","sdFlux") %in% names(resChunks)) )
 				expect_true( all( "iChunk" %in% names(resChunks)) )
 				expect_true( all( table(resChunks$iChunk) == 1) )
+				expect_true( resChunks$flux[1] < resChunks1$flux[1] )	# using a smaller volume in chunk-varying volume
+				expect_true( resChunks$flux[2] > resChunks1$flux[1] )	# using a larger volume in chunk-varying volume
 			})
 	#
 	dsPlots <- plotCampaignConcSeries(dsChunked, resChunks, isVerbose=FALSE)
