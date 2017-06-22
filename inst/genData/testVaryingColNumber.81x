@@ -6,7 +6,7 @@ Software:	4.0.5
 Comments:	
 Obs#:	1
 Port#:	0
-Label:	Flux2_140929_1600
+Label:	ChunkLabel1
 Observation Length:	03:00
 Pre-purge:	00:20
 Post-purge:	00:40
@@ -242,7 +242,7 @@ Software:	4.0.5
 Comments:	
 Obs#:	2
 Port#:	0
-Label:	Flux2_140929_1600
+Label:	ChunkLabel2
 Observation Length:	03:00
 Pre-purge:	00:20
 Post-purge:	00:40

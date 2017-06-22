@@ -60,6 +60,7 @@ read81x <- function(
 		,formatTS=NULL			##<< format of the timestamp columns, see \code{\link{strptime}}, e.g. 
 		,tz="UTC"				##<< specify a time zone when converting to POSIXct, default: current local e.g CET, UTC
 		,na.strings=c('','NA','NAN','"NAN"')
+		,labelRowOffset=-16		##<< the row offset, usually before concentration measurements to generate column \code{chunkLabel}
 ){
 	##details<< 
 	## version of \code{\link{readDat}} with adjusted defaults
@@ -81,6 +82,9 @@ read81x <- function(
 	#colInfo <- read.table(fName, header=TRUE, skip=nRowsFileInfo, nrows=max(1,nRowsColInfo), sep=sep, na.strings=na.strings)
 	iChunk <- 1
 	resBlocks <- lapply( seq_along(summaryStarts), function(iChunk){
+				# read the label from above the chunk
+				tmp <- scan(fName, "character", skip=blockStarts[iChunk]+labelRowOffset, nlines=1, quiet=TRUE)
+				label <- if( length(tmp) >= 2) tmp[2] else as.character(iChunk)
 				rawData <- read.table(fName, header=FALSE
 						, sep=sep, na.strings=na.strings
 						, skip= blockStarts[iChunk]+1
@@ -89,9 +93,14 @@ read81x <- function(
 						, nrows= summaryStarts[iChunk] - blockStarts[iChunk] -2
 						,colClasses=colClasses
 				)
-				cbind( iChunk=iChunk, rawData[ rawData$Type==1,] )
+				cbind( iChunk=iChunk, rawData[ rawData$Type==1,], chunkLabel=label )
 			})
-	res <- do.call( rbind, resBlocks )
+	res <- bind_rows( resBlocks )
+#	# try using the label as chunk identifier
+#	nChunkPerLabel <- res %>% group_by_(~chunkLabel) %>% summarise_(nLabel=~(max(iChunk) - min(iChunk)))
+#	if( all(nChunkPerLabel$nLabel == 1L)){
+#		res$iChunk <- res$label
+#	} else warning("non-unique labels per contiguous chunk of concentration measurements.") 
 	attr(res,"fileInfo") <- fileInfo
 	as_tibble(res)
 }
