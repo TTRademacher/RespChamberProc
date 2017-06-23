@@ -60,7 +60,7 @@ read81x <- function(
 		,formatTS=NULL			##<< format of the timestamp columns, see \code{\link{strptime}}, e.g. 
 		,tz="UTC"				##<< specify a time zone when converting to POSIXct, default: current local e.g CET, UTC
 		,na.strings=c('','NA','NAN','"NAN"')
-		,labelRowOffset=-16		##<< the row offset, usually before concentration measurements to generate column \code{chunkLabel}
+		,labelRowOffset=-16		##<< the row offset, usually before concentration measurements to generate column \code{label}
 ){
 	##details<< 
 	## version of \code{\link{readDat}} with adjusted defaults
@@ -93,11 +93,11 @@ read81x <- function(
 						, nrows= summaryStarts[iChunk] - blockStarts[iChunk] -2
 						,colClasses=colClasses
 				)
-				cbind( iChunk=iChunk, rawData[ rawData$Type==1,], chunkLabel=label )
+				cbind( iChunk=iChunk, rawData[ rawData$Type==1,], label=label )
 			})
-	res <- suppressWarnings(bind_rows( resBlocks ))		# warning on unequal factor levels of id and chunkLabel
+	res <- suppressWarnings(bind_rows( resBlocks ))		# warning on unequal factor levels of id and label
 #	# try using the label as chunk identifier
-#	nChunkPerLabel <- res %>% group_by_(~chunkLabel) %>% summarise_(nLabel=~(max(iChunk) - min(iChunk)))
+#	nChunkPerLabel <- res %>% group_by_(~label) %>% summarise_(nLabel=~(max(iChunk) - min(iChunk)))
 #	if( all(nChunkPerLabel$nLabel == 1L)){
 #		res$iChunk <- res$label
 #	} else warning("non-unique labels per contiguous chunk of concentration measurements.") 

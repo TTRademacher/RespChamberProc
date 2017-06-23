@@ -95,13 +95,13 @@ head(resChunks1)
 
 The results are similar as for `calcClosedChamberFlux`, unless there are several rows identified by additional key column iChunk.
 
+## Plotting faceted data and fits
 ```{r eval=FALSE, echo=FALSE}
 library(twDev)
 reloadPkg("RespChamberProc")
 ```
-
 Plot the results to dectect problems. 
-```{r, spar=TRUE, fig.width=11, fig.height=6, warning=FALSE}
+```{r, spar=TRUE, fig.width=11, fig.height=6, warning=FALSE, message=FALSE}
 library(ggplot2)
 plots <- plotCampaignConcSeries( dsChunk20, resChunks1, plotsPerPage=64L)  
 print(plots$plot[[1]]) # print the first page

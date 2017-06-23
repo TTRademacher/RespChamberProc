@@ -4,7 +4,7 @@ context("severalCycles")
 fName <- system.file("genData/SMANIE_Chamber1_26032015.zip", package = "RespChamberProc")
 if( nzchar(fName) ){ 
 	ds <- ds0 <- readDat(unz(fName, file=unzip(fName, list=TRUE)[1,"Name"] ),tz="UTC")
-	#ds <- filter_(ds0, ~TIMESTAMP < as.POSIXct("2015-03-26 06:29:12", tz="UTC"))
+	ds <- filter_(ds0, ~TIMESTAMP < as.POSIXct("2015-03-26 06:29:12", tz="UTC"))
 	ds$Pa <- ds$AirPres * 100  # convert hPa to Pa
 	ds$CO2_dry <- corrConcDilution(ds, colConc = "CO2_LI840", colVapour = "H2O_LI840")
 	ds$H2O_dry <- corrConcDilution(ds, colConc = "H2O_LI840", colVapour = "H2O_LI840")
