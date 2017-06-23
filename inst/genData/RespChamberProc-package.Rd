@@ -36,6 +36,7 @@ Further misc functionality: \itemize{
 
 Working with a time series of several measurement cycles (see vignette) \itemize{
 \item{ identifying contiguous measurement cycles: \code{\link{subsetContiguous}}}
+\item{ apply the fitting to all measurement cycles: \code{\link{calcClosedChamberFluxForChunks}}}
 \item{ Plotting all time series and fits: \code{\link{plotCampaignConcSeries}} }
 }%itemize
 

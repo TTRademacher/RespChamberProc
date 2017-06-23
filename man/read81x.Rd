@@ -15,7 +15,7 @@
   \item{tz}{specify a time zone when converting to POSIXct, default: current local e.g CET, UTC}
   \item{na.strings}{
 }
-  \item{labelRowOffset}{the row offset, usually before concentration measurements to generate column \code{chunkLabel}}
+  \item{labelRowOffset}{the row offset, usually before concentration measurements to generate column \code{label}}
 }
 \details{version of \code{\link{readDat}} with adjusted defaults}
 

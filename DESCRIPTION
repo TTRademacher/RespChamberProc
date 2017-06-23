@@ -1,6 +1,6 @@
 Package: RespChamberProc
 Title: Processing Data from Respiration Chambers  
-Version: 0.6.1
+Version: 0.6.2
 Date: 2016-12-08
 Author: Thomas Wutzler, Oscar Perez Priego
 Maintainer: Thomas Wutzler <twutz@bgc-jena.mpg.de>
