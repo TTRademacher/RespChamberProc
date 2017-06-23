@@ -84,7 +84,8 @@ plotCampaignConcSeries <- function(
 		}
 		p1b
 	}
-	dsPlots <- dsp %>% group_by_(~iPage) %>% do_( ~tibble::tibble(plot=list(plotPage(.))) )
+	# warning on unequal factor levels
+	dsPlots <- suppressWarnings(dsp %>% group_by_(~iPage) %>% do_( ~tibble::tibble(plot=list(plotPage(.))) ))
 	#dsPlots$plot[[1]]
 	if( nzchar(fileName) ){
 		pdf(width=11.7,height=8.3,file=fileName)

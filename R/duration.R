@@ -16,7 +16,7 @@ plotDurationUncertainty <- function(
 	duration <- durations[1]
 	nDur <- length(durations)
 	#plot( CO2_dry ~ times0, ds)
-	resFits0 <- bind_rows(map_df( durations[-c(nDur+1) ], function(duration){
+	resFits0 <- suppressWarnings(bind_rows(map_df( durations[-c(nDur+1) ], function(duration){
 				dss <- subset(ds, times0 <= duration )
 				times0s <- times0[times0 <= duration]
 				resFit <- calcClosedChamberFlux(dss, tLagFixed=resFit0$tLag
@@ -25,8 +25,8 @@ plotDurationUncertainty <- function(
 				#lines( fitted(resFit$model) ~ times0s[times0s >= resFit0$tLag], col="red")
 				#bind_cols(select_(resFit,~flux,~sdFlux), duration = max(times0s) )
 				#select_(resFit,~flux,~sdFlux)
-			}))
-	resFits <- bind_rows(resFits0, resFit0) %>% mutate(duration=c(durations,max(times0)))
+			})))
+	resFits <- suppressWarnings(bind_rows(resFits0, resFit0) %>% mutate(duration=c(durations,max(times0))))
 	iMinTime <- if( min(resFits$sdFlux, na.rm=TRUE) <= maxSdFlux ) min(which( resFits$sdFlux <= maxSdFlux )) else nrow(resFits)
 	minDuration <- resFits[iMinTime,]
 	##details<< 
