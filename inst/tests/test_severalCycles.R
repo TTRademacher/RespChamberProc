@@ -55,7 +55,7 @@ if( nzchar(fName) ){
 			})
 	
 	#
-	dsPlots <- plotCampaignConcSeries(dsChunked, resChunks, isVerbose=FALSE)
+	suppressMessages(dsPlots <- plotCampaignConcSeries(dsChunked, resChunks, isVerbose=FALSE))
 	#dsPlots <- plotCampaignConcSeries(dsChunked, resChunks1, isVerbose=FALSE)
 	#dsPlots$plot[[1]]
 	test_that("plotCampaignConcSeries",{
