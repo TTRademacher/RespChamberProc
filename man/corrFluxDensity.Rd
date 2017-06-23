@@ -2,7 +2,9 @@
 \alias{corrFluxDensity}
 \title{corrFluxDensity}
 \description{Calculate total flux inside the chamber from flux per amount of air}
-\usage{corrFluxDensity(CO2_molarFlux, volume = 1, temp = 20, pressure = 101325)}\arguments{
+\usage{corrFluxDensity(CO2_molarFlux, volume = 1, temp = 20, 
+    pressure = 101325)}
+\arguments{
   \item{CO2_molarFlux}{numeric vector of rate of changes in CO2 dry molar fraction [ppm/s]}
   \item{volume}{numeric scalar: volume of the chamber in [m3]}
   \item{temp}{numeric vector: temperature inside chamber [degC]}

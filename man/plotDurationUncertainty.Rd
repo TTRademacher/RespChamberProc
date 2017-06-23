@@ -2,11 +2,12 @@
 \alias{plotDurationUncertainty}
 \title{plotDurationUncertainty}
 \description{plot the increase of uncertainty with decreaseing measurement duration}
-\usage{plotDurationUncertainty(ds,
- colTime = "TIMESTAMP", fRegress = c(exp = regressFluxExp, 
-    lin = regressFluxLinear, tanh = regressFluxTanh), ..., durations = seq(max(65, 
-    resFit0$tLag), max(times0), length.out = nDur + 1), nDur = 20, 
-    maxSdFlux = 1)}\arguments{
+\usage{plotDurationUncertainty(ds, colTime = "TIMESTAMP", 
+    fRegress = c(exp = regressFluxExp, lin = regressFluxLinear, 
+        tanh = regressFluxTanh), ..., durations = seq(max(65, 
+        resFit0$tLag), max(times0), length.out = nDur + 
+        1), nDur = 20, maxSdFlux = 1)}
+\arguments{
   \item{ds}{
 }
   \item{colTime}{column name of time [s]}

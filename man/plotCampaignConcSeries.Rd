@@ -4,9 +4,11 @@
 \description{get a series of ggplots of the time series and its fits}
 \usage{plotCampaignConcSeries(ds, dsFits = NULL, varName = "CO2_dry", 
     colChunk = "iChunk", timeCol = "TIMESTAMP", qualityFlag = 0, 
-    fTextBR = NULL, fTextTL = NULL, fTextTR = NULL, plotsPerPage = 64, 
-    fileName = "", colIds = c(), ggplotList = c(), ylabel = paste0(varName, 
-        " (", yunit, ")"), yunit = "", isVerbose = TRUE)}\arguments{
+    fTextBR = NULL, fTextTL = NULL, fTextTR = NULL, 
+    plotsPerPage = 64, fileName = "", colIds = c(), 
+    ggplotList = c(), ylabel = paste0(varName, " (", 
+        yunit, ")"), yunit = "", isVerbose = TRUE)}
+\arguments{
   \item{ds}{data frame to plot, with collumns \code{idCol}, \code{timeCol} and \code{varName}}
   \item{dsFits}{tibble of results of \code{\link{calcClosedChamberFlux}} with columns <colChunk>, flux, sdFlux, model,}
   \item{varName}{variable to plot}

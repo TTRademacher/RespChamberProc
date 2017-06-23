@@ -33,9 +33,9 @@ plotCampaignConcSeries <- function(
 	if( length(qualityFlag) != N ) warning("provided quality flag with different length than than number of measurement cycles in data.")
 	# join quality flag to ds and to dsFits 
 	dsQf <- data.frame(id=uniqueId, qf=factor(qualityFlag))	# factor to get discrete color scale
-	ds <- left_join(ds, dsQf, by="id")
+	ds <- suppressWarnings(left_join(ds, dsQf, by="id"))
 	dsQf[[colChunk]] <- dsQf$id; dsQf$id <- NULL
-	dsFits <- left_join(dsFits, dsQf, by=colChunk)
+	dsFits <- suppressWarnings(left_join(dsFits, dsQf, by=colChunk))
 	dsFin <- filter_(ds, paste0("is.finite(",varName,")") )
 	colCodes <- structure(rep("lightgray", length(levels(dsFin$qf)) ), names=levels(dsFin$qf))
 	colCodes["0"] <- "black"
@@ -43,7 +43,7 @@ plotCampaignConcSeries <- function(
 	#(as.numeric(unique(ds$id))-1)%/%plotsPerPage+1
 	dsp <- as_tibble(cbind(iPage= factor((as.numeric(dsFin$id)-1)%/%plotsPerPage+1), dsFin))
 	if( isVerbose ) message(paste("Number of pages (each ",plotsPerPage," plots): ", length(unique(dsp$iPage))), sep="" )
-	dss <- filter_(dsp,~iPage==1)
+	#dss <- filter_(dsp,~iPage==1)
 	plotPage <-  function(dss){
 		idsPage <- unique(dss$id)
 		if(isVerbose) message(paste(idsPage, collapse=","))
@@ -61,6 +61,7 @@ plotCampaignConcSeries <- function(
 				ggplot2::theme(panel.grid=ggplot2::element_blank())
 		if( length(dsFits)  ){
 			dsFitsPage <- filter_(dsFits, lazyeval::interp(~colChunk %in% idsPage, colChunk=as.name(colChunk)))
+			dsFitsPage$id <- dsFitsPage[[colChunk]]
 			#. <- unlist(filter_(dsFitsPage, ~iChunk==4 ), recursive =FALSE)
 			dfFitted <- dsFitsPage %>% rowwise() %>% do_({
 						~data.frame(
@@ -72,17 +73,19 @@ plotCampaignConcSeries <- function(
 			dfTextBR <- data.frame(id=dsFitsPage[[colChunk]], text=fTextBR(dsFitsPage))
 			dfTextTL <- data.frame(id=dsFitsPage[[colChunk]], text=fTextTL(dsFitsPage))
 			dfTextTR <- data.frame(id=dsFitsPage[[colChunk]], text=fTextTR(dsFitsPage))
-			p1 <- p1 + 
-					ggplot2::geom_vline( data=dsFitsPage, ggplot2::aes_string(xintercept="tLag"), col="darkgrey", linetype="dashed", na.rm=TRUE ) +
+			p1b <- 
+				p1 + 
+					ggplot2::geom_vline(data=select_(ungroup(dsFitsPage),~tLag,~id), ggplot2::aes_string(xintercept="tLag"), color="darkgrey", linetype="dashed", na.rm=TRUE) +
 			{if( length(dfFitted)) ggplot2::geom_line( data=dfFitted, ggplot2::aes_string(y="fitted"), col="red", na.rm=TRUE  ) else c() } +
 			ggplot2::geom_text( data=dfTextBR, ggplot2::aes_string(label="text"), x=+Inf, y=-Inf, hjust=1.05, vjust=0, na.rm=TRUE) +
 			ggplot2::geom_text( data=dfTextTL, ggplot2::aes_string(label="text"), x=-Inf, y=+Inf, hjust=0, vjust=1, na.rm=TRUE) +
 			ggplot2::geom_text( data=dfTextTR, ggplot2::aes_string(label="text"), x=+Inf, y=+Inf, hjust=1, vjust=1, na.rm=TRUE) +
 			ggplot2::theme()
 		}
-		p1
+		p1b
 	}
 	dsPlots <- dsp %>% group_by_(~iPage) %>% do_( ~tibble::tibble(plot=list(plotPage(.))) )
+	#dsPlots$plot[[1]]
 	if( nzchar(fileName) ){
 		pdf(width=11.7,height=8.3,file=fileName)
 		on.exit(dev.off())

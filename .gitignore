@@ -43,3 +43,4 @@ vignettes/*.md
 /.project
 /.RData
 /.settings/
+/tmp/

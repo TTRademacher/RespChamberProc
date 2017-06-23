@@ -2,7 +2,8 @@
 \alias{calcVPD}
 \title{calcVPD}
 \description{calculate the water Vapour Pressure Deficit                   }
-\usage{calcVPD(Ts, Pa, H2O)}\arguments{
+\usage{calcVPD(Ts, Pa, H2O)}
+\arguments{
   \item{Ts}{Surface temperature (deg Centrigrade)}
   \item{Pa}{Atmospheric pressure (Pa)}
   \item{H2O}{water Vapour Pressure (ppt)}

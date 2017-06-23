@@ -2,8 +2,10 @@
 \alias{plotResp}
 \title{plotResp}
 \description{plot a single time series, and the fit }
-\usage{plotResp(dsi, resFlux = NULL, colConc = "CO2_dry", colTime = "TIMESTAMP", 
-    ylab = "CO2_dry (ppm)", xlab = "Time (s)", label = "")}\arguments{
+\usage{plotResp(dsi, resFlux = NULL, colConc = "CO2_dry", 
+    colTime = "TIMESTAMP", ylab = "CO2_dry (ppm)", 
+    xlab = "Time (s)", label = "")}
+\arguments{
   \item{dsi}{data.frame of a time series of a single concentration gradient measurement}
   \item{resFlux}{result of \code{\link{calcClosedChamberFlux}}: a one-row tibble with columns tLag, flux, sdFlux, and model}
   \item{colConc}{column name of measurment variable}

@@ -3,7 +3,8 @@
 \title{corrConcDilution}
 \description{Calculate concentration corrected for dilution with water vapor		}
 \usage{corrConcDilution(ds, colConc = "CO2_Avg", colVapour = "H20_Avg", 
-    isUpdateOnNonFiniteVapour = TRUE)}\arguments{
+    isUpdateOnNonFiniteVapour = TRUE)}
+\arguments{
   \item{ds}{data frame with each row one observations, and respective columns}
   \item{colConc}{column name of CO2 concentration [ppm]}
   \item{colVapour}{column name of water vapour concentration [ppt]}

@@ -2,8 +2,10 @@
 \alias{sigmaBootLeverage}
 \title{sigmaBootLeverage}
 \description{Estimate uncertainty of regrssion due to leverage of starting and end points. }
-\usage{sigmaBootLeverage(conc, times, fRegress = regressFluxExp, probs = c(0.05, 
-    0.5, 0.95), nSample = 80, coefStart = c(), tryAutoCorr = TRUE)}\arguments{
+\usage{sigmaBootLeverage(conc, times, fRegress = regressFluxExp, 
+    probs = c(0.05, 0.5, 0.95), nSample = 80, coefStart = c(), 
+    tryAutoCorr = TRUE)}
+\arguments{
   \item{conc}{numeric vector of CO2 concentrations}
   \item{times}{times of conc measurements}
   \item{fRegress}{function to yield a single flux estimate}

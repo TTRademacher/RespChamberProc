@@ -147,7 +147,7 @@ subsetContiguous <- function(
 	## These chunks are indicated by value \code{indexNA} in the index column or
 	## by shortness of the series. Only chunks with at least \code{minNRec} records and at least 
 	## \code{minTime} seconds are reported. Others are neglected.
-	dsChunks <- bind_rows(map_df( 2:length(iChunks), function(i){
+	dsChunks <- as_tibble(map_df( 2:length(iChunks), function(i){
 				dsia <- cbind( iChunk=i-1, filter( ds, row_number() %in% (iChunks[i-1]+1):(iChunks[i]) ))
 				index <- dsia[[colIndex]][1] 
 				dsi <- dsia[is.finite(dsia[[colMeasure]]),]

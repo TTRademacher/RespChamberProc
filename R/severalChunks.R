@@ -8,7 +8,7 @@ calcClosedChamberFluxForChunks <- function(
 		### Allows for adjusting the chamber volume across different chunks (argument \code{volumne} in \code{\link{calcClosedChamberFlux}})
 	,isVerbose=TRUE			##<< set to FALSE to avoid messages
 ){
-	uniqueChunks <- unique(dsChunked[[colChunk]])
+	uniqueChunks <- unique(ds[[colChunk]])
 	nChunk <- length(uniqueChunks)
 	if( length(volumesByChunk) == 1){
 		message("Using the same chamber volume for all chunks.")

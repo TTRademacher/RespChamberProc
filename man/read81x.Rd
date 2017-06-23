@@ -2,9 +2,10 @@
 \alias{read81x}
 \title{read81x}
 \description{Read a Licor generated .x81 file into a data-frame		}
-\usage{read81x(fName, nRowsFileInfo = 23, sep = "\\t", ..., colsTimeStamp = 3, 
-    formatTS = NULL, tz = "UTC", na.strings = c("", "NA", "NAN", 
-        "\\"NAN\\""))}\arguments{
+\usage{read81x(fName, nRowsFileInfo = 23, sep = "\\t", ..., 
+    colsTimeStamp = 3, formatTS = NULL, tz = "UTC", 
+    na.strings = c("", "NA", "NAN", "\\"NAN\\""), labelRowOffset = -16)}
+\arguments{
   \item{fName}{scalar string: file name}
   \item{nRowsFileInfo}{scalar integer: number of lines of initial file information}
   \item{sep}{column separator}
@@ -14,6 +15,7 @@
   \item{tz}{specify a time zone when converting to POSIXct, default: current local e.g CET, UTC}
   \item{na.strings}{
 }
+  \item{labelRowOffset}{the row offset, usually before concentration measurements to generate column \code{chunkLabel}}
 }
 \details{version of \code{\link{readDat}} with adjusted defaults}
 
