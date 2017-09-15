@@ -32,4 +32,4 @@ calcClosedChamberFluxForChunks <- function(
 	ans
 }
 
-
+# TTR: Why not give it different areas by chunk, as well?
