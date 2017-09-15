@@ -10,7 +10,7 @@ plotResp <- function(
 ){
 	times <- unlist (dsi[,colTime]) 
 	times0 <- as.numeric(times) - as.numeric(times[1])
-	plot( dsi[,colConc] ~ times0, xlab=xlab, ylab="" )
+	plot( unlist (dsi[,colConc]) ~ times0, xlab=xlab, ylab="" )
 	mtext(ylab, 2, las=0, 2.3)
 	fluxText <- ""
 	if( length(resFlux) ){
