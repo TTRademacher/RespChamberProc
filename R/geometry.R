@@ -15,7 +15,7 @@ calcChamberGeometry <- function (
     RespArea      <- dimensions [1] * dimensions [2]
     ChamberVolume <- RespArea * dimensions [3] * taper 
   }
-  c (RespArea, ChamberVolume)
+  c (ChamberVolume, RespArea)
 }
 
 attr (calcChamberGeometry,"ex") <- function(){

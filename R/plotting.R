@@ -8,7 +8,7 @@ plotResp <- function(
 	,xlab="Time (s)"		##<< label of x axis
 	,label=""				##<< label of the time series
 ){
-	times <- dsi[,colTime]
+	times <- unlist (dsi[,colTime]) 
 	times0 <- as.numeric(times) - as.numeric(times[1])
 	plot( dsi[,colConc] ~ times0, xlab=xlab, ylab="" )
 	mtext(ylab, 2, las=0, 2.3)
