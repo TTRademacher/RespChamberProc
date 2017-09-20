@@ -1,25 +1,38 @@
-# calcChamberGeometry calcualtes inner chamber volume and enclosed respiring surface area given the geometry and dimensions of the chamber.
-# To do: account for curbed respiring surface, such as tree stems
+# functions to compute volume and surface area of common chamber geometries
 
-calcChamberGeometry <- function (
-  geometry   = 'cylinder', # Geometry of the chamber such as cylinder or cuboid
-  dimensions = NA,         # Vector of chamber dimensions in meters
-                           # For a cylinder, first element = radius, second element = height 
-                           # For a cuboid,   first element = width,  second element = depth, third element = height
-  taper      = 1.0         # A form fctor describing a linear taper of the chamber. 1.0 is equal to no taper. 
+calcChamberGeometryCuboid <- function (
+		###Calculate the inner volume of the chamber and the enclosed respiring surface area for a cuboid shaped chamber.
+		width			##<< the inner length of one basal edge in m
+		,depth			##<< the inner length of the other basal edge in m
+		,height			##<< the inner height of the chamber in m
+		,taper = 1.0	##<< A form factor describing a linear taper of the chamber. 1.0 is equal to no taper. 
 ){
-  if (geometry == 'cylinder') {
-    RespArea      <- pi * dimensions [1]**2.0
-    ChamberVolume <- RespArea * dimensions [2] * taper 
-  } else if (geometry == 'cuboid') {
-    RespArea      <- dimensions [1] * dimensions [2]
-    ChamberVolume <- RespArea * dimensions [3] * taper 
-  }
-  c (ChamberVolume, RespArea)
+	##details<< the respiring surface is assumed to be the basal area of the chamber
+	##details<<
+	## There are functions for other geometries
+	## \begin{itemize}
+	## \item Cylinder: \code{\link{calcChamberGeometryCylinder}}
+	respArea      <- width * depth
+	##value<< a vector with components
+	respArea = pi * radius^2.0
+	c (   chamberVolume = respArea * height * taper	##<< the volume inside the chamber in cubic meters
+		, respArea = respArea)				    	##<< the basal aera of the cylinder in square meters
 }
 
+calcChamberGeometryCylinder <- function (
+		### Calculate the inner volume of the chamber and the enclosed respiring surface area for a cylinder-shaped chamber.
+		radius			##<< the inner radius of the cylinder in m
+		,height			##<< the inner height of the cyclinder in m
+		,taper = 1.0	##<< A form factor describing a linear taper of the chamber. 1.0 is equal to no taper. 
+){
+	##details<< the respiring surface is assumed to be the basal area of the chamber
+	##value<< a vector with components
+	respArea = pi * radius^2.0
+	c (chamberVolume = respArea * height * taper	##<< the volume inside the chamber in cubic meters
+	   , respArea = respArea)				##<< the basal aera of the cylinder in square meters
+} 
 attr (calcChamberGeometry,"ex") <- function(){
   innerRadius <- 0.1016
   innerHeight <- 0.0762
-  calcChamberGeometry (geometry = 'cylinder', dimensions = c (innerRadius, innerHeight))
+  calcChamberGeometryCylinder(innerRadius, innerHeight)
 }
